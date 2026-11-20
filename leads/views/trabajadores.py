@@ -1,14 +1,21 @@
-"""CRUD de trabajadores, con cargos base y coherencia responsable-sede."""
+"""CRUD de trabajadores, con cargos base y coherencia responsable-sede.
+
+Al crear un trabajador se genera además su cuenta de acceso (Usuario): el cargo
+se estandariza para coincidir por nombre con el rol, del que derivan los
+permisos de inicio de sesión.
+"""
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.hashers import make_password
 from django.db.models import Count, Q
-from ..models import Trabajador, Cargo, Sede, Persona, Telefonos
+from ..models import Trabajador, Cargo, Sede, Persona, Telefonos, Usuario, Rol
 from ..forms.trabajadores import TrabajadorForm
 from ..decoradores import rol_requerido
+from ..utils import generar_username, CARGOS_SISTEMA
 
 
 def asegurar_cargos_basicos():
-    for nombre in ['Asesor', 'Coach', 'Gerente Sede', 'Calidad', 'Gerente General']:
+    for nombre in CARGOS_SISTEMA:
         Cargo.objects.get_or_create(nombre_cargo=nombre, defaults={'descripcion_cargo': f'Rol operativo de {nombre}'})
 
 
@@ -54,11 +61,21 @@ def crear_editar_trabajador(request, id_trabajador=None):
         form = TrabajadorForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            dup = (trabajador is None) and Persona.objects.filter(
-                numero_documento_persona=cd['numero_documento']).exists()
-            if dup:
-                form.add_error('numero_documento', 'Ya existe una persona con ese documento.')
-            else:
+            es_alta = trabajador is None
+
+            # Validaciones previas al alta: documento único, cargo presente y rol existente.
+            rol = None
+            if es_alta:
+                if Persona.objects.filter(numero_documento_persona=cd['numero_documento']).exists():
+                    form.add_error('numero_documento', 'Ya existe una persona con ese documento.')
+                if not cd.get('id_cargo'):
+                    form.add_error('id_cargo', 'Selecciona el cargo: define el rol de acceso del usuario.')
+                else:
+                    rol = Rol.objects.filter(nombre_rol=cd['id_cargo'].nombre_cargo).first()
+                    if rol is None:
+                        form.add_error('id_cargo', 'No existe un rol que corresponda a ese cargo.')
+
+            if not form.errors:
                 if trabajador:
                     p = trabajador.id_persona
                     p.nombres = cd['nombres']
@@ -79,6 +96,16 @@ def crear_editar_trabajador(request, id_trabajador=None):
                         Telefonos.objects.get_or_create(
                             numero_telefono=cd['telefono'], tipo_telefono='Principal',
                             defaults={'id_persona': p})
+
+                    # Cuenta de acceso: username derivado del nombre y contraseña
+                    # temporal (documento + primer apellido), siempre hasheada.
+                    primer_apellido = (cd['apellidos'].split() or [''])[0].capitalize()
+                    clave_temporal = f"{cd['numero_documento']}{primer_apellido}"
+                    Usuario.objects.create(
+                        id_persona=p, id_rol=rol,
+                        username=generar_username(cd['nombres'], cd['apellidos']),
+                        password_hash=make_password(clave_temporal),
+                        estado_usuario='Activo')
 
                 # Coherencia responsable <-> sede
                 _sincronizar_responsable(trabajador)
