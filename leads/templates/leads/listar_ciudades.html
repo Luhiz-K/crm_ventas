@@ -1,64 +1,149 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administrar Ciudades - DeuDoor</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-</head>
-<body class="bg-light">
+{% extends 'leads/base.html' %}
 
-    <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center bg-white p-4 shadow-sm rounded-3 mb-4 border-start border-info border-4">
-            <div>
-                <h2 class="text-info m-0 fw-bold"><i class="bi bi-geo-alt"></i> Ciudades Registradas</h2>
-                <p class="text-muted m-0">Zonas geográficas de operación.</p>
+{% block titulo %}Ciudades{% endblock %}
+{% block encabezado %}Ciudades{% endblock %}
+
+{% block contenido %}
+
+<!-- ===== Métricas ===== -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-4">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="text-muted small text-uppercase">Ciudades</div><div class="h3 fw-bold m-0">{{ total_ciudades }}</div></div>
+                <i class="bi bi-geo-alt fs-2 text-info"></i>
             </div>
-            <a href="{% url 'crear_ciudad' %}" class="btn btn-info text-white fw-bold">
-                <i class="bi bi-plus-circle-fill"></i> Registrar Nueva Ciudad
-            </a>
         </div>
+    </div>
+    <div class="col-6 col-lg-4">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="text-muted small text-uppercase">Trabajadores</div><div class="h3 fw-bold m-0">{{ total_trabajadores }}</div></div>
+                <i class="bi bi-person-badge fs-2 text-success"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-4">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="text-muted small text-uppercase">Clientes</div><div class="h3 fw-bold m-0">{{ total_clientes }}</div></div>
+                <i class="bi bi-people fs-2 text-primary"></i>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <div class="card shadow-sm border-0 bg-white p-4">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Nombre de la Ciudad</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for ciudad in ciudades %}
-                    <tr>
-                        <td class="fw-bold text-dark">{{ ciudad.ciudad }}</td>
-                        <td class="text-end">
-                            <a href="{% url 'editar_ciudad' ciudad.id_ciudad %}" class="btn btn-sm btn-outline-info fw-bold me-2">
-                                <i class="bi bi-pencil-square"></i> Editar
-                            </a>
-                            <!-- NUEVO BOTÓN DE ELIMINAR -->
-                            <a href="{% url 'eliminar_ciudad' ciudad.id_ciudad %}" class="btn btn-sm btn-outline-danger fw-bold">
-                                <i class="bi bi-trash3"></i> Eliminar
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="2" class="text-center py-4 text-muted">
-                            <i class="bi bi-info-circle fs-3 d-block mb-2"></i> No hay ciudades registradas.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-            <div class="mt-4">
-                <a href="{% url 'panel_control' %}" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left"></i> Volver al Panel Principal
-                </a>
+<div class="card border-0 shadow-sm p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="text-muted small text-uppercase" id="label-chart">Clientes por ciudad (top 8)</div>
+        <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="toggleTipo">
+            <label class="form-check-label small text-muted" for="toggleTipo">Ver trabajadores</label>
+        </div>
+    </div>
+    <div style="height:160px;"><canvas id="graficoCiudades"></canvas></div>
+</div>
+
+<!-- ===== Filtro + nueva ===== -->
+<form method="get" class="card border-0 shadow-sm p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label small text-muted mb-1">Buscar ciudad</label>
+            <input type="text" name="q" value="{{ f_q }}" class="form-control" placeholder="Nombre de la ciudad...">
+        </div>
+        <div class="col-md-3 d-grid"><button class="btn btn-primary"><i class="bi bi-funnel"></i> Filtrar</button></div>
+        <div class="col-md-3 d-grid"><a href="{% url 'listar_ciudades' %}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Limpiar</a></div>
+    </div>
+    <div class="mt-2 text-end">
+        <a href="{% url 'crear_ciudad' %}" class="btn btn-sm btn-success"><i class="bi bi-plus-circle-fill"></i> Nueva ciudad</a>
+    </div>
+</form>
+
+<!-- ===== Tabla + panel lateral ===== -->
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle m-0">
+                    <thead class="table-light">
+                        <tr><th>ID</th><th>Ciudad</th><th class="text-end">Trabajadores</th><th class="text-end">Clientes</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for c in ciudades %}
+                        <tr class="fila-ciudad" style="cursor:pointer;"
+                            data-nombre="{{ c.ciudad }}"
+                            data-trab="{{ c.n_trabajadores }}"
+                            data-cli="{{ c.n_clientes }}"
+                            data-editar="{% url 'editar_ciudad' c.id_ciudad %}"
+                            data-eliminar="{% url 'eliminar_ciudad' c.id_ciudad %}">
+                            <td class="fw-bold">{{ c.id_ciudad }}</td>
+                            <td>{{ c.ciudad }}</td>
+                            <td class="text-end"><span class="badge bg-success-subtle text-success-emphasis">{{ c.n_trabajadores }}</span></td>
+                            <td class="text-end"><span class="badge bg-primary-subtle text-primary-emphasis">{{ c.n_clientes }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted py-4">No hay ciudades para este filtro.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-</body>
-</html>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm p-3 position-sticky" style="top:1rem;">
+            <div id="panel-vacio" class="text-center text-muted py-5">
+                <i class="bi bi-hand-index-thumb fs-1"></i>
+                <p class="mt-2 mb-0">Selecciona una ciudad para ver su detalle.</p>
+            </div>
+            <div id="panel-detalle" class="d-none">
+                <h5 class="fw-bold mb-3"><i class="bi bi-geo-alt text-info"></i> <span id="d-nombre"></span></h5>
+                <dl class="row small mb-3">
+                    <dt class="col-7 text-muted">Trabajadores</dt><dd class="col-5" id="d-trab"></dd>
+                    <dt class="col-7 text-muted">Clientes</dt><dd class="col-5" id="d-cli"></dd>
+                </dl>
+                <a id="d-editar" href="#" class="btn btn-outline-primary w-100 mb-2"><i class="bi bi-pencil-square"></i> Editar</a>
+                <a id="d-eliminar" href="#" class="btn btn-outline-danger w-100"><i class="bi bi-trash"></i> Eliminar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ por_ciudad|json_script:"datos-ciudades" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    // Panel lateral
+    document.querySelectorAll('.fila-ciudad').forEach(function (fila) {
+        fila.addEventListener('click', function () {
+            document.querySelectorAll('.fila-ciudad').forEach(f => f.classList.remove('table-active'));
+            fila.classList.add('table-active');
+            document.getElementById('d-nombre').textContent = fila.dataset.nombre;
+            document.getElementById('d-trab').textContent = fila.dataset.trab;
+            document.getElementById('d-cli').textContent = fila.dataset.cli;
+            document.getElementById('d-editar').href = fila.dataset.editar;
+            document.getElementById('d-eliminar').href = fila.dataset.eliminar;
+            document.getElementById('panel-vacio').classList.add('d-none');
+            document.getElementById('panel-detalle').classList.remove('d-none');
+        });
+    });
+
+    // Gráfico con interruptor trabajadores / clientes
+    const datos = JSON.parse(document.getElementById('datos-ciudades').textContent);
+    const chart = new Chart(document.getElementById('graficoCiudades'), {
+        type: 'bar',
+        data: { labels: datos.map(x => x.ciudad), datasets: [{ label: 'Clientes', data: datos.map(x => x.cli) }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+    function pintarCiudades() {
+        const verTrab = document.getElementById('toggleTipo').checked;
+        chart.data.datasets[0].data = datos.map(x => verTrab ? x.trab : x.cli);
+        chart.data.datasets[0].label = verTrab ? 'Trabajadores' : 'Clientes';
+        document.getElementById('label-chart').textContent =
+            (verTrab ? 'Trabajadores' : 'Clientes') + ' por ciudad (top 8)';
+        chart.update();
+    }
+    document.getElementById('toggleTipo').addEventListener('change', pintarCiudades);
+</script>
+
+{% endblock %}

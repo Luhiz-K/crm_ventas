@@ -1,51 +1,39 @@
-# leads/forms/captura_inicial.py
 from django import forms
 
+
 class CapturaTelefonoForm(forms.Form):
-    # Variables de control de entorno (Fácilmente modificables)
-    LONGITUD_MINIMA = 10
-    LONGITUD_MAXIMA = 10
+    LONGITUD = 10
+    TIPO_DOC_CHOICES = [
+        ('', 'Tipo de documento...'),
+        ('CC', 'Cédula de Ciudadanía'),
+        ('CE', 'Cédula de Extranjería'),
+        ('SSN', 'Social Security Number'),
+        ('ITIN', 'ITIN Number'),
+    ]
 
-    # Campo 1: El número a buscar/marcar
     numero_marcado = forms.CharField(
-        max_length=LONGITUD_MAXIMA,
-        min_length=LONGITUD_MINIMA,
-        label="Número de Teléfono",
-        widget=forms.TextInput(attrs={
-            'class': 'form-control form-control-lg', 
-            'placeholder': 'Ej. 3001234567',
-            'autofocus': 'autofocus'
-        })
-    )
-    
-    # Campo 2: La observación inicial de la llamada
+        max_length=10, min_length=10, label='Número de teléfono',
+        widget=forms.TextInput(attrs={'class': 'form-control form-control-lg', 'placeholder': 'Ej. 3001234567', 'autofocus': 'autofocus'}))
+    tipo_documento = forms.ChoiceField(
+        choices=TIPO_DOC_CHOICES, label='Tipo de documento',
+        widget=forms.Select(attrs={'class': 'form-select'}))
+    numero_documento = forms.CharField(
+        label='Número de documento',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Documento del cliente'}))
     observacion = forms.CharField(
-        required=False, 
-        label="Observación Inicial",
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 3,
-            'placeholder': 'Notas sobre la llamada inicial (opcional)'
-        })
-    )
+        required=False, label='Observación inicial',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Notas de la llamada (opcional)'}))
 
-    # Método de validación interna: Limpiar y verificar longitud exacta
     def clean_numero_marcado(self):
-        numero = self.cleaned_data.get('numero_marcado')
-        numero_limpio = numero.strip()
-        
-        # 1. Validación de tipo de dato (Solo números)
-        if not numero_limpio.isdigit():
-            raise forms.ValidationError("El número telefónico solo debe contener dígitos.")
-        
-        # 2. Validación estricta de longitud (Regla de negocio)
-        longitud_actual = len(numero_limpio)
-        if longitud_actual < self.LONGITUD_MINIMA or longitud_actual > self.LONGITUD_MAXIMA:
-            # Si el mínimo y máximo son iguales, el mensaje es estricto
-            if self.LONGITUD_MINIMA == self.LONGITUD_MAXIMA:
-                raise forms.ValidationError(f"El número debe tener exactamente {self.LONGITUD_MINIMA} dígitos. Ingresaste {longitud_actual}.")
-            else:
-                # Si hay un rango, el mensaje es flexible
-                raise forms.ValidationError(f"El número debe tener entre {self.LONGITUD_MINIMA} y {self.LONGITUD_MAXIMA} dígitos.")
-            
-        return numero_limpio
+        numero = (self.cleaned_data.get('numero_marcado') or '').strip()
+        if not numero.isdigit():
+            raise forms.ValidationError('El teléfono solo debe contener dígitos.')
+        if len(numero) != self.LONGITUD:
+            raise forms.ValidationError(f'El número debe tener exactamente {self.LONGITUD} dígitos.')
+        return numero
+
+    def clean_numero_documento(self):
+        doc = (self.cleaned_data.get('numero_documento') or '').strip()
+        if not doc:
+            raise forms.ValidationError('El documento es obligatorio.')
+        return doc

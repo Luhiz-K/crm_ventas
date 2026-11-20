@@ -1,0 +1,626 @@
+{% extends 'leads/base.html' %}
+{% block contenido %}
+<div class="container-fluid py-3">
+
+  <!-- Barra de pasos -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    {% for num, nombre, icono in pasos %}
+      <div class="text-center flex-fill">
+        <div class="rounded-circle d-inline-flex align-items-center justify-content-center
+                    {% if num == paso %}bg-primary text-white{% elif num < paso %}bg-success text-white{% else %}bg-light text-muted border{% endif %}"
+             style="width:42px;height:42px;">
+          {% if num < paso %}<i class="bi bi-check-lg"></i>{% else %}<i class="bi {{ icono }}"></i>{% endif %}
+        </div>
+        <div class="small mt-1 {% if num == paso %}fw-bold{% else %}text-muted{% endif %}">{{ nombre }}</div>
+      </div>
+      {% if not forloop.last %}<div class="flex-fill border-top mx-1" style="height:1px;margin-top:-20px;"></div>{% endif %}
+    {% endfor %}
+  </div>
+
+  {% if editando %}<div class="alert alert-warning py-2 mb-2"><i class="bi bi-pencil-square"></i> Editando el Lead #{{ editando }}.{% if not es_gerente %} Algunos campos están bloqueados para tu perfil.{% endif %}</div>{% endif %}
+
+  <!-- Identificadores del lead (crecen con el flujo) -->
+  <div class="alert alert-light border d-flex flex-wrap gap-4 mb-3 py-2">
+    {% for item in identificadores %}
+      <div>
+        <div class="text-muted small">{{ item.label }}{% if item.lock %} <i class="bi bi-lock-fill"></i>{% endif %}</div>
+        <b>{{ item.valor|default:"—" }}</b>
+      </div>
+    {% endfor %}
+  </div>
+
+  <form method="post" id="form-wizard" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row g-3">
+
+      <!-- Columna principal -->
+      <div class="col-lg-8">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            {% if paso == 1 %}
+              <h5 class="mb-3"><i class="bi bi-person-vcard me-2"></i>Datos de la persona</h5>
+              <div class="row g-3">
+                {% for field in form %}
+                  <div class="col-md-6">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                  </div>
+                {% endfor %}
+              </div>
+
+            {% elif paso == 2 %}
+              <h5 class="mb-1"><i class="bi bi-key me-2"></i>Accesos a plataformas</h5>
+              <p class="text-muted small mb-3">Credenciales que el cliente entrega para consultar su reporte en las centrales de riesgo. La clave queda enmascarada; usa <i class="bi bi-clipboard"></i> para copiarla sin revelarla.</p>
+
+              {% if bloquear_accesos %}<div class="alert alert-info py-2 small"><i class="bi bi-lock-fill"></i> Los accesos ya registrados son de <b>solo lectura</b> para tu perfil (puedes verlos y copiar la clave). Puedes agregar accesos nuevos.</div>{% endif %}
+
+              <div id="plats-wrap">
+                {% for pl in plataformas %}
+                  {% if bloquear_accesos %}
+                  <div class="row g-2 mb-2 plat-row align-items-end">
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Plataforma / buró</label>
+                      <input class="form-control form-control-sm bg-light" value="{{ pl.plataforma|default:'(sin buró)' }}" readonly>
+                      <input type="hidden" name="plat_buro" value="{{ pl.buro_id|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Usuario</label>
+                      <input name="plat_usuario" class="form-control form-control-sm bg-light" value="{{ pl.usuario|default:'' }}" readonly>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Clave</label>
+                      <div class="input-group input-group-sm">
+                        <input name="plat_password" type="password" class="form-control plat-pass bg-light" value="{{ pl.password|default:'' }}" readonly>
+                        <button type="button" class="btn btn-outline-secondary btn-copy" title="Copiar clave"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-0">Descripción</label>
+                      <input name="plat_desc" class="form-control form-control-sm bg-light" value="{{ pl.descripcion|default:'' }}" readonly>
+                    </div>
+                    <div class="col-md-1 text-end">
+                      <span class="badge bg-secondary" title="Solo lectura"><i class="bi bi-lock-fill"></i></span>
+                    </div>
+                  </div>
+                  {% else %}
+                  <div class="row g-2 mb-2 plat-row align-items-end">
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Plataforma / buró</label>
+                      <select name="plat_buro" class="form-select form-select-sm">
+                        <option value="">Buró...</option>
+                        {% for b in buros %}
+                          <option value="{{ b.id_buro }}" {% if b.id_buro|stringformat:'s' == pl.buro_id %}selected{% endif %}>{{ b.nombre_buro }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Usuario</label>
+                      <input name="plat_usuario" class="form-control form-control-sm" value="{{ pl.usuario|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Clave</label>
+                      <div class="input-group input-group-sm">
+                        <input name="plat_password" type="password" class="form-control plat-pass" value="{{ pl.password|default:'' }}">
+                        <button type="button" class="btn btn-outline-secondary btn-copy" title="Copiar clave"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-0">Descripción</label>
+                      <input name="plat_desc" class="form-control form-control-sm" value="{{ pl.descripcion|default:'' }}">
+                    </div>
+                    <div class="col-md-1 text-end">
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-del-plat" title="Quitar acceso"><i class="bi bi-trash"></i></button>
+                    </div>
+                  </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+
+              <template id="plat-template">
+                <div class="row g-2 mb-2 plat-row align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small mb-0">Plataforma / buró</label>
+                    <select name="plat_buro" class="form-select form-select-sm">
+                      <option value="">Buró...</option>
+                      {% for b in buros %}<option value="{{ b.id_buro }}">{{ b.nombre_buro }}</option>{% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small mb-0">Usuario</label>
+                    <input name="plat_usuario" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small mb-0">Clave</label>
+                    <div class="input-group input-group-sm">
+                      <input name="plat_password" type="password" class="form-control plat-pass">
+                      <button type="button" class="btn btn-outline-secondary btn-copy" title="Copiar clave"><i class="bi bi-clipboard"></i></button>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label small mb-0">Descripción</label>
+                    <input name="plat_desc" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm btn-del-plat" title="Quitar acceso"><i class="bi bi-trash"></i></button>
+                  </div>
+                </div>
+              </template>
+
+              <button type="button" class="btn btn-outline-primary btn-sm mt-1" id="add-plat"><i class="bi bi-plus-lg"></i> Agregar acceso</button>
+
+              <hr class="my-3">
+              <h6 class="mb-2"><i class="bi bi-paperclip me-2"></i>Reportes cargados</h6>
+
+              {% if reportes %}
+                <ul class="list-group mb-3">
+                  {% for r in reportes %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                      <span>
+                        <i class="bi bi-file-earmark-text me-1"></i>
+                        <span class="badge bg-primary-subtle text-primary-emphasis me-1">{{ r.buro_nombre|default:"sin buró" }}</span>
+                        <b>{{ r.etiqueta|default:"(sin etiqueta)" }}</b>
+                        <span class="text-muted small">— {{ r.nombre }}</span>
+                      </span>
+                      <button type="submit" name="quitar_idx" value="{{ forloop.counter0 }}" class="btn btn-sm btn-outline-danger" formnovalidate title="Quitar reporte"><i class="bi bi-trash"></i></button>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-muted small mb-2">Aún no hay reportes cargados.</p>
+              {% endif %}
+
+              <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                  <label class="form-label small mb-0">Buró</label>
+                  <select name="reporte_buro" class="form-select form-select-sm">
+                    <option value="">Buró...</option>
+                    {% for b in buros %}<option value="{{ b.id_buro }}">{{ b.nombre_buro }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small mb-0">Etiqueta / nota</label>
+                  <input name="reporte_etiqueta" class="form-control form-control-sm" placeholder="Ej. pantallazo mora">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small mb-0">Archivo(s) — PDF, PNG, JPG</label>
+                  <input type="file" name="reporte_archivo" class="form-control form-control-sm" accept=".pdf,.png,.jpg,.jpeg" multiple>
+                </div>
+                <div class="col-md-2">
+                  <button type="submit" name="accion" value="subir_reporte" class="btn btn-outline-primary btn-sm w-100" formnovalidate><i class="bi bi-upload"></i> Subir</button>
+                </div>
+              </div>
+              <div class="form-text">Puedes subir uno o varios. Se guardan temporalmente hasta que guardes el lead.</div>
+
+            {% elif paso == 3 %}
+              <h5 class="mb-1"><i class="bi bi-cash-coin me-2"></i>Servicios y plan de pago</h5>
+              <p class="text-muted small mb-3">El valor de cada servicio debe estar dentro de su rango. Luego reparte el total en cuotas que sumen exactamente la deuda.</p>
+
+              {% if errores %}
+                <div class="alert alert-danger py-2"><ul class="mb-0 small">
+                  {% for e in errores %}<li>{{ e }}</li>{% endfor %}
+                </ul></div>
+              {% endif %}
+
+              <h6 class="text-muted small text-uppercase">Servicios vendidos</h6>
+              <div id="serv-wrap">
+                {% for s in acuerdo_servicios %}
+                  {% if bloquear_servicios %}
+                  <div class="row g-2 mb-2 serv-row align-items-start">
+                    <div class="col-md-6">
+                      <label class="form-label small mb-0">Servicio</label>
+                      <input class="form-control form-control-sm bg-light" value="{{ s.nombre|default:s.servicio_id }}" readonly>
+                      <input type="hidden" name="serv_id" value="{{ s.servicio_id }}">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-0">Valor cobrado</label>
+                      <input name="serv_valor" type="number" step="0.01" class="form-control form-control-sm serv-valor bg-light" value="{{ s.valor|default:'' }}" readonly>
+                      <div class="text-danger small serv-error"></div>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-0 d-block">&nbsp;</label>
+                      <span class="badge bg-secondary" title="Servicio ya contratado (solo el gerente lo cambia)"><i class="bi bi-lock-fill"></i></span>
+                    </div>
+                  </div>
+                  {% else %}
+                  <div class="row g-2 mb-2 serv-row align-items-start">
+                    <div class="col-md-6">
+                      <label class="form-label small mb-0">Servicio</label>
+                      <select name="serv_id" class="form-select form-select-sm serv-select">
+                        <option value="">Servicio...</option>
+                        {% for c in servicios_cat %}
+                          <option value="{{ c.id }}" data-min="{{ c.min }}" data-ideal="{{ c.ideal }}" data-max="{{ c.max }}" {% if c.id|stringformat:'s' == s.servicio_id %}selected{% endif %}>{{ c.nombre }} (${{ c.min }}–${{ c.max }})</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-0">Valor cobrado</label>
+                      <input name="serv_valor" type="number" step="0.01" class="form-control form-control-sm serv-valor" value="{{ s.valor|default:'' }}">
+                      <div class="text-danger small serv-error"></div>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-0 d-block">&nbsp;</label>
+                      {% if not editando or es_gerente %}<button type="button" class="btn btn-outline-danger btn-sm btn-del-serv w-100" title="Quitar servicio"><i class="bi bi-trash"></i></button>{% else %}<span class="badge bg-secondary" title="Solo el gerente elimina servicios"><i class="bi bi-lock-fill"></i></span>{% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              <template id="serv-template">
+                <div class="row g-2 mb-2 serv-row align-items-start">
+                  <div class="col-md-6">
+                    <label class="form-label small mb-0">Servicio</label>
+                    <select name="serv_id" class="form-select form-select-sm serv-select">
+                      <option value="">Servicio...</option>
+                      {% for c in servicios_cat %}<option value="{{ c.id }}" data-min="{{ c.min }}" data-ideal="{{ c.ideal }}" data-max="{{ c.max }}">{{ c.nombre }} (${{ c.min }}–${{ c.max }})</option>{% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small mb-0">Valor cobrado</label>
+                    <input name="serv_valor" type="number" step="0.01" class="form-control form-control-sm serv-valor">
+                    <div class="text-danger small serv-error"></div>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label small mb-0 d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger btn-sm btn-del-serv w-100" title="Quitar servicio"><i class="bi bi-trash"></i></button>
+                  </div>
+                </div>
+              </template>
+              <button type="button" class="btn btn-outline-primary btn-sm" id="add-serv"><i class="bi bi-plus-lg"></i> Agregar servicio</button>
+
+              <div class="alert alert-info border mt-3 mb-4 d-flex justify-content-between align-items-center py-2">
+                <span class="fw-semibold">Total servicios (deuda del cliente):</span>
+                <span class="h5 m-0" id="total-serv">$0</span>
+              </div>
+
+              <h6 class="text-muted small text-uppercase">Plan de cuotas</h6>
+              {% if editando %}<p class="text-muted small">Las cuotas con pagos quedan bloqueadas 🔒. Edita o crea las pendientes para cuadrar la deuda.</p>{% endif %}
+              <div id="cuota-wrap">
+                {% for q in acuerdo_cuotas %}
+                  <div class="row g-2 mb-2 cuota-row align-items-end">
+                    <input type="hidden" name="cuota_id" value="{{ q.id|default:'' }}">
+                    <input type="hidden" name="cuota_bloqueada" value="{% if q.bloqueada %}1{% else %}0{% endif %}">
+                    <div class="col-md-5">
+                      <label class="form-label small mb-0">Fecha de pago</label>
+                      <input name="cuota_fecha" type="date" class="form-control form-control-sm{% if q.bloqueada %} bg-light{% endif %}" value="{{ q.fecha|default:'' }}"{% if q.bloqueada %} readonly{% endif %}>
+                    </div>
+                    <div class="col-md-5">
+                      <label class="form-label small mb-0">Valor cuota</label>
+                      <input name="cuota_valor" type="number" step="0.01" class="form-control form-control-sm cuota-valor{% if q.bloqueada %} bg-light{% endif %}" value="{{ q.valor|default:'' }}"{% if q.bloqueada %} readonly{% endif %}>
+                    </div>
+                    <div class="col-md-2 text-end">
+                      {% if q.bloqueada %}<span class="badge bg-secondary" title="Cuota con pagos"><i class="bi bi-lock-fill"></i></span>{% else %}<button type="button" class="btn btn-outline-danger btn-sm btn-del-cuota" title="Quitar cuota"><i class="bi bi-trash"></i></button>{% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              <template id="cuota-template">
+                <div class="row g-2 mb-2 cuota-row align-items-end">
+                  <input type="hidden" name="cuota_id" value="">
+                  <input type="hidden" name="cuota_bloqueada" value="0">
+                  <div class="col-md-5">
+                    <label class="form-label small mb-0">Fecha de pago</label>
+                    <input name="cuota_fecha" type="date" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label small mb-0">Valor cuota</label>
+                    <input name="cuota_valor" type="number" step="0.01" class="form-control form-control-sm cuota-valor">
+                  </div>
+                  <div class="col-md-2 text-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm btn-del-cuota" title="Quitar cuota"><i class="bi bi-trash"></i></button>
+                  </div>
+                </div>
+              </template>
+              <button type="button" class="btn btn-outline-primary btn-sm" id="add-cuota"><i class="bi bi-plus-lg"></i> Agregar cuota</button>
+
+              <div class="alert alert-light border mt-3 mb-0">
+                <div class="d-flex justify-content-between"><span>Suma de cuotas:</span><b id="suma-cuotas">$0</b></div>
+                <div class="d-flex justify-content-between"><span>Diferencia con el total:</span><b id="dif-cuotas">$0</b></div>
+              </div>
+
+            {% elif paso == 4 %}
+              <h5 class="mb-3"><i class="bi bi-check2-circle me-2"></i>Resumen y guardado</h5>
+              {% if errores %}
+                <div class="alert alert-danger py-2"><ul class="mb-0 small">
+                  {% for e in errores %}<li>{{ e }}</li>{% endfor %}
+                </ul></div>
+              {% endif %}
+
+              <div class="card border-warning shadow-sm mb-3">
+                <div class="card-body py-2">
+                  <label class="form-label fw-bold mb-1"><i class="bi bi-star-fill text-warning"></i> Motivo del contrato <span class="text-danger">*</span></label>
+                  <select name="motivo_id" class="form-select" required>
+                    <option value="">Selecciona el motivo...</option>
+                    {% for m in motivos %}
+                      <option value="{{ m.id_contrato }}" {% if m.id_contrato|stringformat:'s' == motivo_sel %}selected{% endif %}>{{ m.motivo_contrato }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Dato clave para la operación. Obligatorio para guardar.</div>
+                </div>
+              </div>
+
+              <div class="card shadow-sm mb-3"><div class="card-body py-2">
+                <h6 class="text-muted small text-uppercase mb-2"><i class="bi bi-person-vcard me-1"></i>Cliente</h6>
+                <div class="row small">
+                  {% for item in identificadores %}
+                    <div class="col-md-4 mb-1"><span class="text-muted">{{ item.label }}:</span> <b>{{ item.valor|default:"—" }}</b></div>
+                  {% endfor %}
+                  {% if persona_data.telefono_adicional_1 %}<div class="col-md-4 mb-1"><span class="text-muted">Tel. adicional 1:</span> <b>{{ persona_data.telefono_adicional_1 }}</b></div>{% endif %}
+                  {% if persona_data.telefono_adicional_2 %}<div class="col-md-4 mb-1"><span class="text-muted">Tel. adicional 2:</span> <b>{{ persona_data.telefono_adicional_2 }}</b></div>{% endif %}
+                  {% if persona_data.telefono_adicional_3 %}<div class="col-md-4 mb-1"><span class="text-muted">Tel. adicional 3:</span> <b>{{ persona_data.telefono_adicional_3 }}</b></div>{% endif %}
+                </div>
+              </div></div>
+
+              <div class="card shadow-sm mb-3"><div class="card-body py-2">
+                <h6 class="text-muted small text-uppercase mb-2"><i class="bi bi-key me-1"></i>Accesos a plataformas</h6>
+                {% for pl in plataformas %}
+                  {% if pl.usuario or pl.plataforma %}
+                    <div class="small border-bottom py-1">
+                      <b>{{ pl.plataforma|default:"(sin buró)" }}</b> · usuario: {{ pl.usuario|default:"—" }} · clave: ••••••••
+                      {% if pl.descripcion %}· <span class="text-muted">{{ pl.descripcion }}</span>{% endif %}
+                    </div>
+                  {% endif %}
+                {% empty %}<div class="text-muted small">Sin accesos.</div>{% endfor %}
+              </div></div>
+
+              <div class="card shadow-sm mb-3"><div class="card-body py-2">
+                <h6 class="text-muted small text-uppercase mb-2"><i class="bi bi-paperclip me-1"></i>Reportes</h6>
+                {% for r in reportes %}
+                  <div class="small border-bottom py-1">
+                    <span class="badge bg-primary-subtle text-primary-emphasis">{{ r.buro_nombre|default:"sin buró" }}</span>
+                    <b>{{ r.etiqueta|default:"(sin etiqueta)" }}</b> <span class="text-muted">— {{ r.nombre }}</span>
+                  </div>
+                {% empty %}<div class="text-muted small">Sin reportes.</div>{% endfor %}
+              </div></div>
+
+              <div class="card shadow-sm mb-3"><div class="card-body py-2">
+                <h6 class="text-muted small text-uppercase mb-2"><i class="bi bi-cash-coin me-1"></i>Servicios</h6>
+                {% for s in acuerdo.servicios %}
+                  <div class="small d-flex justify-content-between border-bottom py-1"><span>{{ s.nombre|default:s.servicio_id }}</span><b>${{ s.valor }}</b></div>
+                {% empty %}<div class="text-muted small">Sin servicios.</div>{% endfor %}
+                <div class="d-flex justify-content-between mt-1"><b>Total (deuda)</b><b>${{ acuerdo.total }}</b></div>
+              </div></div>
+
+              <div class="card shadow-sm mb-2"><div class="card-body py-2">
+                <h6 class="text-muted small text-uppercase mb-2"><i class="bi bi-calendar-check me-1"></i>Plan de cuotas</h6>
+                {% for c in acuerdo.cuotas %}
+                  <div class="small d-flex justify-content-between border-bottom py-1"><span>{{ c.fecha }}</span><b>${{ c.valor }}</b></div>
+                {% empty %}<div class="text-muted small">Sin cuotas.</div>{% endfor %}
+              </div></div>
+
+            {% else %}
+              <div class="text-center text-muted py-5">
+                <i class="bi bi-cone-striped fs-1"></i>
+                <p class="mt-2">Paso {{ paso }} en construcción (Fase siguiente).</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna de observaciones (siempre) -->
+      <div class="col-lg-4">
+        <div class="card shadow-sm">
+          <div class="card-header"><i class="bi bi-journal-text me-2"></i>Observaciones</div>
+          <div class="card-body">
+            <textarea name="observaciones" class="form-control" rows="8"
+                      placeholder="Notas de la gestión...">{{ observaciones }}</textarea>
+            <div class="form-text">Se conservan en todos los pasos.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Navegación -->
+    <div class="d-flex justify-content-between mt-4">
+      <div class="d-flex gap-2">
+        {% if paso > 1 %}
+          <button type="submit" name="accion" value="anterior" class="btn btn-outline-secondary" formnovalidate>
+            <i class="bi bi-arrow-left"></i> Anterior
+          </button>
+        {% endif %}
+        {% if editando %}
+          <a href="{% url 'ver_lead' editando %}" class="btn btn-outline-danger" data-salir="1">
+            <i class="bi bi-x-lg"></i> Salir
+          </a>
+        {% elif paso == 1 %}
+          <a href="{% url 'captura_inicial' %}" class="btn btn-outline-danger" data-salir="1">
+            <i class="bi bi-x-lg"></i> Salir
+          </a>
+        {% endif %}
+      </div>
+
+      {% if paso < total_pasos %}
+        <button type="submit" name="accion" value="siguiente" class="btn btn-primary">
+          Siguiente <i class="bi bi-arrow-right"></i>
+        </button>
+      {% else %}
+        <button type="submit" name="accion" value="guardar" class="btn btn-success">
+          <i class="bi bi-check2-circle"></i> {% if editando %}Actualizar lead{% else %}Guardar lead{% endif %}
+        </button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<script>
+// Navegación interna y aviso de salida
+(function () {
+  var navInterna = false;
+  document.querySelectorAll('#form-wizard button[type=submit]').forEach(function (b) {
+    b.addEventListener('click', function () { navInterna = true; });
+  });
+  var salir = document.querySelector('[data-salir]');
+  if (salir) salir.addEventListener('click', function (e) {
+    if (!confirm('¿Seguro que deseas salir? Se perderá el lead en progreso.')) e.preventDefault();
+    else navInterna = true;
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (!navInterna) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+</script>
+
+<script>
+// Paso Plataformas: agregar / quitar / copiar (la 1a fila ya viene del servidor)
+(function () {
+  var wrap = document.getElementById('plats-wrap');
+  if (!wrap) return;
+
+  var add = document.getElementById('add-plat');
+  var tpl = document.getElementById('plat-template');
+  if (add && tpl) add.addEventListener('click', function () {
+    wrap.appendChild(tpl.content.cloneNode(true));
+  });
+
+  wrap.addEventListener('click', function (e) {
+    // Quitar (con confirmación)
+    var del = e.target.closest('.btn-del-plat');
+    if (del) {
+      var row = del.closest('.plat-row');
+      var campoNombre = row.querySelector('input[name=plat_nombre]');
+      var nombre = (campoNombre && campoNombre.value || '').trim();
+      var etiqueta = nombre ? ('el acceso de "' + nombre + '"') : 'este acceso';
+      if (!confirm('¿Eliminar ' + etiqueta + '? Perderás la contraseña guardada y tendrías que volver a pedírsela al cliente.')) return;
+      var rows = wrap.querySelectorAll('.plat-row');
+      if (rows.length > 1) row.remove();
+      else row.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+      return;
+    }
+    // Copiar clave sin revelarla
+    var copy = e.target.closest('.btn-copy');
+    if (copy) {
+      var inp = copy.closest('.input-group').querySelector('.plat-pass');
+      navigator.clipboard.writeText(inp.value || '').then(function () {
+        var ic = copy.querySelector('i');
+        ic.className = 'bi bi-check2';
+        setTimeout(function () { ic.className = 'bi bi-clipboard'; }, 1200);
+      });
+    }
+  });
+
+  // Confirmar antes de borrar un reporte ya cargado
+  document.querySelectorAll('button[name=quitar_idx]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      var li = b.closest('li');
+      var etq = li ? li.querySelector('b') : null;
+      var nombre = etq ? etq.textContent.trim() : 'este reporte';
+      if (!confirm('¿Eliminar el reporte "' + nombre + '"? Esta acción no se puede deshacer.')) e.preventDefault();
+    });
+  });
+})();
+</script>
+
+<script>
+// Paso Plan de pago: servicios (ideal + min/máx) y cuotas (reparto del total)
+(function () {
+  var servWrap = document.getElementById('serv-wrap');
+  if (!servWrap) return;
+  var cuotaWrap = document.getElementById('cuota-wrap');
+
+  function dec(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+  function fmt(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('es-CO'); }
+
+  function totalServicios() {
+    var t = 0;
+    servWrap.querySelectorAll('.serv-valor').forEach(function (i) { t += dec(i.value); });
+    return Math.round(t * 100) / 100;
+  }
+  function sumaCuotas() {
+    var t = 0;
+    cuotaWrap.querySelectorAll('.cuota-valor').forEach(function (i) { t += dec(i.value); });
+    return Math.round(t * 100) / 100;
+  }
+  function refrescar() {
+    var total = totalServicios();
+    document.getElementById('total-serv').textContent = fmt(total);
+    var suma = sumaCuotas();
+    document.getElementById('suma-cuotas').textContent = fmt(suma);
+    var dif = Math.round((total - suma) * 100) / 100;
+    var el = document.getElementById('dif-cuotas');
+    el.textContent = fmt(dif);
+    el.className = (dif === 0 && total > 0) ? 'text-success' : 'text-danger';
+  }
+  // Con una sola cuota, su valor = total (pago completo)
+  function syncCuotaUnica() {
+    var rows = cuotaWrap.querySelectorAll('.cuota-row');
+    if (rows.length === 1) rows[0].querySelector('.cuota-valor').value = totalServicios();
+  }
+  function validarValorServicio(row) {
+    var sel = row.querySelector('.serv-select');
+    var opt = sel.options[sel.selectedIndex];
+    var vi = row.querySelector('.serv-valor');
+    var err = row.querySelector('.serv-error');
+    if (!opt || !opt.value || vi.value === '') { err.textContent = ''; return; }
+    var v = parseFloat(vi.value), min = parseFloat(opt.dataset.min), max = parseFloat(opt.dataset.max);
+    if (v < min) err.textContent = 'Muy bajo: el mínimo es $' + opt.dataset.min;
+    else if (v > max) err.textContent = 'Muy alto: el máximo es $' + opt.dataset.max;
+    else err.textContent = '';
+  }
+  // --- Servicios ---
+  servWrap.addEventListener('change', function (e) {
+    var sel = e.target.closest('.serv-select');
+    if (!sel) return;
+    var row = sel.closest('.serv-row');
+    var opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value && opt.dataset.ideal) row.querySelector('.serv-valor').value = opt.dataset.ideal;
+    validarValorServicio(row);
+    syncCuotaUnica();
+    refrescar();
+  });
+  servWrap.addEventListener('input', function (e) {
+    var vi = e.target.closest('.serv-valor');
+    if (vi) { validarValorServicio(vi.closest('.serv-row')); syncCuotaUnica(); refrescar(); }
+  });
+  var servTpl = document.getElementById('serv-template');
+  document.getElementById('add-serv').addEventListener('click', function () {
+    if (servTpl) servWrap.appendChild(servTpl.content.cloneNode(true));
+  });
+  servWrap.addEventListener('click', function (e) {
+    var del = e.target.closest('.btn-del-serv');
+    if (!del) return;
+    var row = del.closest('.serv-row');
+    if (row.querySelector('.serv-valor').value && !confirm('¿Quitar este servicio?')) return;
+    if (servWrap.querySelectorAll('.serv-row').length > 1) row.remove();
+    else {
+      row.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+      row.querySelector('select').selectedIndex = 0;
+      row.querySelector('.serv-error').textContent = '';
+    }
+    syncCuotaUnica();
+    refrescar();
+  });
+
+  // --- Cuotas ---
+  var cuotaTpl = document.getElementById('cuota-template');
+  document.getElementById('add-cuota').addEventListener('click', function () {
+    if (!cuotaTpl) return;
+    var restante = Math.round((totalServicios() - sumaCuotas()) * 100) / 100;
+    if (restante < 0) restante = 0;
+    var frag = cuotaTpl.content.cloneNode(true);
+    var vi = frag.querySelector('.cuota-valor');
+    if (vi) vi.value = restante;
+    cuotaWrap.appendChild(frag);
+    refrescar();
+  });
+  cuotaWrap.addEventListener('input', function (e) {
+    if (e.target.closest('.cuota-valor')) refrescar();
+  });
+  cuotaWrap.addEventListener('click', function (e) {
+    var del = e.target.closest('.btn-del-cuota');
+    if (!del) return;
+    var row = del.closest('.cuota-row');
+    if (row.querySelector('.cuota-valor').value && !confirm('¿Quitar esta cuota?')) return;
+    if (cuotaWrap.querySelectorAll('.cuota-row').length > 1) row.remove();
+    else row.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+    refrescar();
+  });
+
+  // Al cargar
+  servWrap.querySelectorAll('.serv-row').forEach(function (r) { validarValorServicio(r); });
+  syncCuotaUnica();
+  refrescar();
+})();
+</script>
+{% endblock %}

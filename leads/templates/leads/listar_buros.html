@@ -1,0 +1,96 @@
+{% extends 'leads/base.html' %}
+
+{% block titulo %}Burós{% endblock %}
+{% block encabezado %}Burós / centrales de riesgo{% endblock %}
+
+{% block contenido %}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm p-3 h-100"><div class="d-flex justify-content-between align-items-center">
+            <div><div class="text-muted small text-uppercase">Burós</div><div class="h3 fw-bold m-0">{{ total }}</div></div>
+            <i class="bi bi-bank fs-2 text-primary"></i></div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm p-3 h-100"><div class="d-flex justify-content-between align-items-center">
+            <div><div class="text-muted small text-uppercase">Activos</div><div class="h3 fw-bold m-0">{{ activos }}</div></div>
+            <i class="bi bi-check-circle fs-2 text-success"></i></div></div>
+    </div>
+</div>
+
+<form method="get" class="card border-0 shadow-sm p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6"><label class="form-label small text-muted mb-1">Buscar buró</label>
+            <input type="text" name="q" value="{{ f_q }}" class="form-control" placeholder="Nombre del buró..."></div>
+        <div class="col-md-3 d-grid"><button class="btn btn-primary"><i class="bi bi-funnel"></i> Filtrar</button></div>
+        <div class="col-md-3 d-grid"><a href="{% url 'listar_buros' %}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Limpiar</a></div>
+    </div>
+    <div class="mt-2 text-end"><a href="{% url 'crear_buro' %}" class="btn btn-sm btn-success"><i class="bi bi-plus-circle-fill"></i> Nuevo buró</a></div>
+</form>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm"><div class="table-responsive">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light"><tr><th>ID</th><th>Buró</th><th>Estado</th><th class="text-end">Reportes</th><th class="text-end">Accesos</th></tr></thead>
+                <tbody>
+                    {% for b in buros %}
+                    <tr class="fila-buro" style="cursor:pointer;"
+                        data-nombre="{{ b.nombre_buro }}"
+                        data-estado="{{ b.estado }}"
+                        data-reportes="{{ b.n_reportes }}"
+                        data-accesos="{{ b.n_accesos }}"
+                        data-editar="{% url 'editar_buro' b.id_buro %}">
+                        <td class="fw-bold">{{ b.id_buro }}</td>
+                        <td>{{ b.nombre_buro }}</td>
+                        <td>
+                            {% if b.estado == 'ACTIVO' %}
+                                <span class="badge bg-success-subtle text-success-emphasis">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><span class="badge bg-primary-subtle text-primary-emphasis">{{ b.n_reportes }}</span></td>
+                        <td class="text-end"><span class="badge bg-info-subtle text-info-emphasis">{{ b.n_accesos }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-4">No hay burós. Crea el primero (Datacrédito, Experian, TransUnion...).</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm p-3 position-sticky" style="top:1rem;">
+            <div id="panel-vacio" class="text-center text-muted py-5"><i class="bi bi-hand-index-thumb fs-1"></i><p class="mt-2 mb-0">Selecciona un buró.</p></div>
+            <div id="panel-detalle" class="d-none">
+                <h5 class="fw-bold mb-3"><i class="bi bi-bank text-primary"></i> <span id="d-nombre"></span></h5>
+                <dl class="row small mb-3">
+                    <dt class="col-7 text-muted">Estado</dt><dd class="col-5" id="d-estado"></dd>
+                    <dt class="col-7 text-muted">Reportes anclados</dt><dd class="col-5" id="d-reportes"></dd>
+                    <dt class="col-7 text-muted">Accesos anclados</dt><dd class="col-5" id="d-accesos"></dd>
+                </dl>
+                <a id="d-editar" href="#" class="btn btn-outline-primary w-100"><i class="bi bi-pencil-square"></i> Editar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.fila-buro').forEach(function (f) {
+        f.addEventListener('click', function () {
+            document.querySelectorAll('.fila-buro').forEach(x => x.classList.remove('table-active'));
+            f.classList.add('table-active');
+            const d = f.dataset;
+            document.getElementById('d-nombre').textContent = d.nombre;
+            document.getElementById('d-estado').textContent = d.estado;
+            document.getElementById('d-reportes').textContent = d.reportes;
+            document.getElementById('d-accesos').textContent = d.accesos;
+            document.getElementById('d-editar').href = d.editar;
+            document.getElementById('panel-vacio').classList.add('d-none');
+            document.getElementById('panel-detalle').classList.remove('d-none');
+        });
+    });
+</script>
+{% endblock %}

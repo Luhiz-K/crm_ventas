@@ -1,0 +1,33 @@
+{% extends 'leads/base.html' %}
+
+{% block titulo %}Producto{% endblock %}
+{% block encabezado %}{% if es_edicion %}Editar producto{% else %}Nuevo producto{% endif %}{% endblock %}
+
+{% block contenido %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm p-4">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nombre del producto</label>
+                    {{ form.nombre_servicio }}<div class="text-danger small">{{ form.nombre_servicio.errors|striptags }}</div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label fw-semibold">Valor mínimo</label>{{ form.precio_minimo }}<div class="text-danger small">{{ form.precio_minimo.errors|striptags }}</div></div>
+                    <div class="col-md-4"><label class="form-label fw-semibold">Valor ideal</label>{{ form.precio_ideal }}<div class="text-danger small">{{ form.precio_ideal.errors|striptags }}</div></div>
+                    <div class="col-md-4"><label class="form-label fw-semibold">Valor máximo</label>{{ form.precio_maximo }}<div class="text-danger small">{{ form.precio_maximo.errors|striptags }}</div></div>
+                </div>
+                <div class="mb-3 mt-3" style="max-width: 220px;">
+                    <label class="form-label fw-semibold">Estado</label>{{ form.estado }}
+                </div>
+                {% if form.non_field_errors %}<div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>{% endif %}
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-success flex-grow-1 fw-bold"><i class="bi bi-save"></i> Guardar</button>
+                    <a href="{% url 'listar_servicios' %}" class="btn btn-outline-secondary px-4">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

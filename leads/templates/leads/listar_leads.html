@@ -1,63 +1,340 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Historial de Leads - DeuDoor</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center bg-white p-4 shadow-sm rounded-3 mb-4 border-start border-primary border-4">
-            <div>
-                <h2 class="text-primary m-0 fw-bold"><i class="bi bi-telephone-outbound"></i> Historial de Leads</h2>
-                <p class="text-muted m-0">Gestión de capturas y estados de negociación.</p>
-            </div>
-            
-            {% if puede_crear %}
-                <a href="{% url 'captura_inicial' %}" class="btn btn-primary fw-bold">
-                    <i class="bi bi-plus-circle-fill"></i> Crear Nuevo Lead
-                </a>
-            {% else %}
-                <button class="btn btn-secondary" disabled>
-                    <i class="bi bi-lock-fill"></i> Crear Lead Bloqueado
-                </button>
-            {% endif %}
-        </div>
+{% extends 'leads/base.html' %}
 
-        <div class="card shadow-sm border-0 p-4">
-            <table class="table table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID Lead</th>
-                        <th>Estado</th>
-                        <th>Fecha Creación</th>
-                        <th>Teléfono</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for lead in leads %}
-                    <tr>
-                        <td class="fw-bold">{{ lead.id_lead }}</td>
-                        <td><span class="badge bg-info">{{ lead.estado_lead }}</span></td>
-                        <td>{{ lead.fecha_creacion }} {{ lead.hora_creacion }}</td>
-                        <td>{{ lead.telefono_marcado|default:"N/A" }}</td>
-                        <td class="text-end">
-                            <a href="{% url 'editar_lead' lead.id_lead %}" class="btn btn-sm btn-outline-primary fw-bold">
-                                <i class="bi bi-pencil-square"></i> Editar / Detalle
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="5" class="text-center">No hay leads registrados.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <a href="{% url 'panel_control' %}" class="btn btn-secondary mt-3">
-                <i class="bi bi-arrow-left"></i> Volver al Panel Principal
-            </a>
+{% block titulo %}Leads{% endblock %}
+{% block encabezado %}Leads{% endblock %}
+
+{% block contenido %}
+
+<!-- ===== Métricas (reaccionan al filtro; interruptor para ver total general) ===== -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small text-uppercase" id="tile-total-label">Total (filtro)</div>
+                    <div class="h3 fw-bold m-0" id="tile-total">0</div>
+                </div>
+                <i class="bi bi-collection fs-2 text-primary"></i>
+            </div>
         </div>
     </div>
-</body>
-</html>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small text-uppercase">Hoy</div>
+                    <div class="h3 fw-bold m-0">{{ hoy }}</div>
+                </div>
+                <i class="bi bi-calendar-day fs-2 text-success"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="text-muted small text-uppercase">Leads por estado</div>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" id="toggleTotal">
+                    <label class="form-check-label small text-muted" for="toggleTotal">Ver total general</label>
+                </div>
+            </div>
+            <div style="height:150px;"><canvas id="graficoEstados"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Filtros ===== -->
+<form method="get" class="card border-0 shadow-sm p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">Buscar (nombre, documento, teléfono, id)</label>
+            <input type="text" name="q" value="{{ f_q }}" class="form-control" placeholder="Escribe para buscar...">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Estado</label>
+            <select name="estado" class="form-select">
+                <option value="">Todos</option>
+                {% for e in estados %}
+                <option value="{{ e }}" {% if e == f_estado %}selected{% endif %}>{{ e }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Fecha puntual</label>
+            <input type="date" name="fecha" value="{{ f_fecha }}" class="form-control">
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filtrar</button>
+        </div>
+    </div>
+    <div class="mt-2 d-flex gap-2 align-items-center">
+        <a href="?rango=hoy" class="btn btn-sm btn-outline-success"><i class="bi bi-calendar-day"></i> Hoy</a>
+        <a href="{% url 'listar_leads' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i> Limpiar</a>
+        <div class="ms-auto">
+            {% if puede_crear %}
+                <a href="{% url 'captura_inicial' %}" class="btn btn-sm btn-success"><i class="bi bi-plus-circle-fill"></i> Nuevo lead</a>
+            {% else %}
+                <button class="btn btn-sm btn-secondary" disabled><i class="bi bi-lock-fill"></i> Crear bloqueado</button>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+<!-- ===== Tabla + panel lateral ===== -->
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <!-- ===== Barra superior: tamaño de página + navegación ===== -->
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <form method="get" class="d-flex align-items-center gap-2 m-0">
+                        {% if f_q %}<input type="hidden" name="q" value="{{ f_q }}">{% endif %}
+                        {% if f_estado %}<input type="hidden" name="estado" value="{{ f_estado }}">{% endif %}
+                        {% if f_fecha %}<input type="hidden" name="fecha" value="{{ f_fecha }}">{% endif %}
+                        {% if f_rango %}<input type="hidden" name="rango" value="{{ f_rango }}">{% endif %}
+                        <label class="small text-muted m-0">Por página</label>
+                        <select name="per_page" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                            <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                            <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                            <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                        </select>
+                    </form>
+                    <span class="small text-muted">{{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }}</span>
+                </div>
+                {% if page_obj.paginator.num_pages > 1 %}
+                <nav><ul class="pagination pagination-sm m-0">
+                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                        {% if page_obj.has_previous %}<a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ qs_base }}"><i class="bi bi-chevron-left"></i></a>{% else %}<span class="page-link"><i class="bi bi-chevron-left"></i></span>{% endif %}
+                    </li>
+                    <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                        {% if page_obj.has_next %}<a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ qs_base }}"><i class="bi bi-chevron-right"></i></a>{% else %}<span class="page-link"><i class="bi bi-chevron-right"></i></span>{% endif %}
+                    </li>
+                </ul></nav>
+                {% endif %}
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle m-0">
+                    <thead class="table-light">
+                        <tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Estado</th><th>Fecha</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for lead in leads %}
+                        <tr class="fila-lead" style="cursor:pointer;"
+                            data-detalle="{% url 'detalle_lead' lead.id_lead %}"
+                            data-editar="{% url 'ver_lead' lead.id_lead %}">
+                            <td class="fw-bold">{{ lead.id_lead }}</td>
+                            <td>{% if lead.id_persona %}{{ lead.id_persona.nombres }} {{ lead.id_persona.apellidos }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                            <td>{{ lead.telefono_marcado|default:'—' }}</td>
+                            <td><span class="badge bg-info-subtle text-info-emphasis">{{ lead.estado_lead }}</span></td>
+                            <td class="small text-muted">{{ lead.fecha_creacion }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted py-4">No hay leads para este filtro.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <!-- ===== Pie: tamaño de página + navegación ===== -->
+            <div class="card-footer bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <form method="get" class="d-flex align-items-center gap-2 m-0">
+                        {% if f_q %}<input type="hidden" name="q" value="{{ f_q }}">{% endif %}
+                        {% if f_estado %}<input type="hidden" name="estado" value="{{ f_estado }}">{% endif %}
+                        {% if f_fecha %}<input type="hidden" name="fecha" value="{{ f_fecha }}">{% endif %}
+                        {% if f_rango %}<input type="hidden" name="rango" value="{{ f_rango }}">{% endif %}
+                        <label class="small text-muted m-0">Por página</label>
+                        <select name="per_page" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                            <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                            <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                            <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                        </select>
+                    </form>
+                    <span class="small text-muted">{{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }}</span>
+                </div>
+                {% if page_obj.paginator.num_pages > 1 %}
+                <nav><ul class="pagination pagination-sm m-0">
+                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                        {% if page_obj.has_previous %}<a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ qs_base }}"><i class="bi bi-chevron-left"></i></a>{% else %}<span class="page-link"><i class="bi bi-chevron-left"></i></span>{% endif %}
+                    </li>
+                    <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                        {% if page_obj.has_next %}<a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ qs_base }}"><i class="bi bi-chevron-right"></i></a>{% else %}<span class="page-link"><i class="bi bi-chevron-right"></i></span>{% endif %}
+                    </li>
+                </ul></nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel lateral de detalle (más amplio) -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm p-3 position-sticky" style="top: 1rem;">
+            <div id="panel-vacio" class="text-center text-muted py-5">
+                <i class="bi bi-hand-index-thumb fs-1"></i>
+                <p class="mt-2 mb-0">Selecciona un lead de la lista para ver su detalle.</p>
+            </div>
+
+            <div id="panel-cargando" class="d-none text-center py-5 text-muted">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2 mb-0">Cargando...</p>
+            </div>
+
+            <div id="panel-detalle" class="d-none">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="fw-bold m-0"><i class="bi bi-person-vcard text-primary"></i> Lead #<span id="d-id"></span></h5>
+                    <span id="d-estado-badge" class="badge bg-info-subtle text-info-emphasis"></span>
+                </div>
+                <a id="d-editar" href="#" class="btn btn-primary w-100 mb-3"><i class="bi bi-box-arrow-up-right"></i> Abrir detalle</a>
+                <dl class="row mb-2 small">
+                    <dt class="col-5 text-muted">Nombre</dt><dd class="col-7" id="d-nombre"></dd>
+                    <dt class="col-5 text-muted">Documento</dt><dd class="col-7" id="d-documento"></dd>
+                    <dt class="col-5 text-muted">Teléfono</dt><dd class="col-7" id="d-telefono"></dd>
+                    <dt class="col-5 text-muted">Otros tel.</dt><dd class="col-7" id="d-telefonos-extra">—</dd>
+                    <dt class="col-5 text-muted">Fecha</dt><dd class="col-7" id="d-fecha"></dd>
+                    <dt class="col-5 text-muted">Sede</dt><dd class="col-7" id="d-sede"></dd>
+                    <dt class="col-5 text-muted">Asesor</dt><dd class="col-7" id="d-asesor"></dd>
+                </dl>
+
+                <hr class="my-2">
+                <div class="small">
+                    <div class="text-muted text-uppercase mb-1">Servicios comprados</div>
+                    <ul id="d-servicios" class="ps-3 mb-1"></ul>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Valor total</span><strong id="d-valortotal"></strong>
+                    </div>
+                </div>
+
+                <hr class="my-2">
+                <div class="small">
+                    <div class="d-flex justify-content-between"><span class="text-muted">Próximo pago</span><span id="d-proxfecha"></span></div>
+                    <div class="d-flex justify-content-between"><span class="text-muted">Valor cuota</span><span id="d-proxvalor"></span></div>
+                    <div id="d-mora" class="mt-2"></div>
+                </div>
+
+                <hr class="my-2">
+                <div class="small">
+                    <div class="text-muted text-uppercase mb-1"><i class="bi bi-clock-history"></i> Bitácora</div>
+                    <div id="d-notas" class="border rounded bg-light p-2" style="max-height:180px; overflow-y:auto;">
+                        <p class="text-muted m-0 text-center">—</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ porestado_filtrado|json_script:"datos-filtrado" }}
+{{ porestado_general|json_script:"datos-general" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    const fmt = n => (n === null || n === undefined) ? '—' : '$' + Number(n).toLocaleString('es-CO');
+
+    // ---- Panel lateral: trae el detalle del servidor al hacer clic ----
+    document.querySelectorAll('.fila-lead').forEach(function (fila) {
+        fila.addEventListener('click', async function () {
+            document.querySelectorAll('.fila-lead').forEach(f => f.classList.remove('table-active'));
+            fila.classList.add('table-active');
+            document.getElementById('panel-vacio').classList.add('d-none');
+            document.getElementById('panel-detalle').classList.add('d-none');
+            document.getElementById('panel-cargando').classList.remove('d-none');
+            try {
+                const r = await fetch(fila.dataset.detalle);
+                const d = await r.json();
+                document.getElementById('d-id').textContent = d.id;
+                document.getElementById('d-estado-badge').textContent = d.estado;
+                document.getElementById('d-nombre').textContent = d.nombre;
+                document.getElementById('d-documento').textContent = d.documento;
+                document.getElementById('d-telefono').textContent = d.telefono;
+                document.getElementById('d-telefonos-extra').textContent = (d.telefonos_adicionales && d.telefonos_adicionales.length) ? d.telefonos_adicionales.join(', ') : '—';
+                document.getElementById('d-fecha').textContent = d.fecha;
+                document.getElementById('d-sede').textContent = d.sede;
+                document.getElementById('d-asesor').textContent = d.asesor;
+
+                const ul = document.getElementById('d-servicios');
+                ul.innerHTML = '';
+                if (d.servicios.length) {
+                    d.servicios.forEach(function (s) {
+                        const li = document.createElement('li');
+                        li.textContent = s.nombre + ' — ' + fmt(s.valor);
+                        ul.appendChild(li);
+                    });
+                } else {
+                    ul.innerHTML = '<li class="text-muted">Sin servicios / acuerdo</li>';
+                }
+                document.getElementById('d-valortotal').textContent = fmt(d.valor_total);
+
+                document.getElementById('d-proxfecha').textContent = d.proximo ? d.proximo.fecha : '—';
+                document.getElementById('d-proxvalor').textContent = d.proximo ? fmt(d.proximo.valor) : '—';
+
+                const mora = document.getElementById('d-mora');
+                if (d.en_mora) {
+                    mora.innerHTML = '<span class="badge bg-danger w-100 py-2"><i class="bi bi-exclamation-triangle"></i> En mora: ' + fmt(d.monto_mora) + '</span>';
+                } else if (d.proximo) {
+                    mora.innerHTML = '<span class="badge bg-success w-100 py-2">Al día</span>';
+                } else {
+                    mora.innerHTML = '<span class="badge bg-secondary w-100 py-2">Sin acuerdo de pago</span>';
+                }
+
+                // ---- Bitácora: más reciente arriba, pintada con textContent (seguro ante XSS) ----
+                const notasBox = document.getElementById('d-notas');
+                notasBox.innerHTML = '';
+                if (d.notas && d.notas.length) {
+                    d.notas.forEach(function (n) {
+                        const item = document.createElement('div');
+                        item.className = 'border-bottom pb-1 mb-1';
+                        const autor = document.createElement('div');
+                        autor.className = 'fw-bold';
+                        autor.textContent = n.autor;
+                        const fecha = document.createElement('div');
+                        fecha.className = 'text-muted';
+                        fecha.style.fontSize = '.72rem';
+                        fecha.textContent = n.fecha;
+                        const texto = document.createElement('div');
+                        texto.style.whiteSpace = 'pre-wrap';
+                        texto.textContent = n.texto;
+                        item.appendChild(autor);
+                        item.appendChild(fecha);
+                        item.appendChild(texto);
+                        notasBox.appendChild(item);
+                    });
+                } else {
+                    notasBox.innerHTML = '<p class="text-muted m-0 text-center">Sin notas.</p>';
+                }
+
+                document.getElementById('d-editar').href = fila.dataset.editar;
+                document.getElementById('panel-cargando').classList.add('d-none');
+                document.getElementById('panel-detalle').classList.remove('d-none');
+            } catch (e) {
+                document.getElementById('panel-cargando').innerHTML = '<p class="text-danger">No se pudo cargar el detalle.</p>';
+            }
+        });
+    });
+
+    // ---- Métricas interactivas (filtro vs total) ----
+    const dFiltrado = JSON.parse(document.getElementById('datos-filtrado').textContent);
+    const dGeneral = JSON.parse(document.getElementById('datos-general').textContent);
+    const totalFiltrado = {{ total_filtrado }};
+    const totalGeneral = {{ total_general }};
+
+    const grafico = new Chart(document.getElementById('graficoEstados'), {
+        type: 'doughnut',
+        data: { labels: [], datasets: [{ data: [] }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '60%' }
+    });
+
+    function pintarMetricas() {
+        const modoTotal = document.getElementById('toggleTotal').checked;
+        const datos = modoTotal ? dGeneral : dFiltrado;
+        document.getElementById('tile-total').textContent = modoTotal ? totalGeneral : totalFiltrado;
+        document.getElementById('tile-total-label').textContent = modoTotal ? 'Total general' : 'Total (filtro)';
+        grafico.data.labels = datos.map(x => x.estado_lead);
+        grafico.data.datasets[0].data = datos.map(x => x.n);
+        grafico.update();
+    }
+    document.getElementById('toggleTotal').addEventListener('change', pintarMetricas);
+    pintarMetricas();
+</script>
+
+{% endblock %}

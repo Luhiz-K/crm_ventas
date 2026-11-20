@@ -26,17 +26,27 @@ class Ciudad(models.Model):
     class Meta:
         db_table = 'ciudad'
 
-class FechasPago(models.Model):
+class CuotaEstado(models.Model):
     id_fecha_pago = models.AutoField(primary_key=True)
     id_acuerdo_pago = models.ForeignKey(AcuerdoPago, models.DO_NOTHING, db_column='id_acuerdo_pago')
     valor_fecha_pago = models.DecimalField(max_digits=15, decimal_places=2)
     fecha_pago = models.DateField()
     estado_pago = models.CharField(max_length=25, blank=True, null=True)
-    valor_pagado = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
-    fecha_pagado = models.DateField(blank=True, null=True)
 
     class Meta:
-        db_table = 'fechas_pago'
+        db_table = 'cuotas_estados'
+
+
+class PagoRealizado(models.Model):
+    id_pago = models.AutoField(primary_key=True)
+    id_cuota = models.ForeignKey(CuotaEstado, models.CASCADE, db_column='id_cuota')
+    valor_pago = models.DecimalField(max_digits=15, decimal_places=2)
+    fecha_pago = models.DateField()
+    id_trabajador = models.ForeignKey('Trabajador', models.DO_NOTHING, db_column='id_trabajador', null=True, blank=True)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pagos_realizados'
 
 class MotivoContrato(models.Model):
     id_contrato = models.AutoField(primary_key=True)
@@ -89,7 +99,8 @@ class Leads(models.Model):
     id_trabajador = models.ForeignKey(Trabajador, models.DO_NOTHING, db_column='id_trabajador')
     id_contrato = models.ForeignKey(MotivoContrato, models.DO_NOTHING, db_column='id_contrato', null=True, blank=True)
     id_acuerdo_pago = models.ForeignKey(AcuerdoPago, models.DO_NOTHING, db_column='id_acuerdo_pago', null=True, blank=True)
-    estado_lead = models.CharField(max_length=20, default='NUEVO') 
+    estado_lead = models.CharField(max_length=20, default='NUEVO')
+    estado_venta = models.CharField(max_length=20, default='LEAD')  # LEAD / VENDIDO / FINALIZADO 
     telefono_marcado = models.CharField(max_length=20, null=True, blank=True) 
     fecha_creacion = models.DateField(auto_now_add=True, null=True)
     hora_creacion = models.TimeField(auto_now_add=True, null=True)
@@ -109,9 +120,21 @@ class Observaciones(models.Model):
     class Meta:
         db_table = 'observaciones'
 
+class Buro(models.Model):
+    id_buro = models.AutoField(primary_key=True)
+    nombre_buro = models.CharField(unique=True, max_length=100)
+    estado = models.CharField(max_length=20, default='ACTIVO')  # ACTIVO / INACTIVO
+
+    class Meta:
+        db_table = 'buro'
+
+    def __str__(self):
+        return self.nombre_buro
+
 class ReporteGrafico(models.Model):
     id_reporte_grafico = models.AutoField(primary_key=True)
     id_lead = models.ForeignKey(Leads, models.DO_NOTHING, db_column='id_lead')
+    id_buro = models.ForeignKey(Buro, models.DO_NOTHING, db_column='id_buro', null=True, blank=True)
     documento_reporte_grafico = models.FileField(upload_to='reportes_plataformas/', max_length=255, blank=True, null=True)
     tipo_reporte_grafico = models.CharField(max_length=50, blank=True, null=True)
 
@@ -149,6 +172,7 @@ class Usuario(models.Model):
 class UsuarioReporte(models.Model):
     id_reporte = models.AutoField(primary_key=True)
     id_lead = models.ForeignKey(Leads, models.DO_NOTHING, db_column='id_lead')
+    id_buro = models.ForeignKey(Buro, models.DO_NOTHING, db_column='id_buro', null=True, blank=True)
     usuario_reporte = models.CharField(max_length=100, blank=True, null=True)
     password_reporte = models.CharField(max_length=100, blank=True, null=True)
     plataforma_reporte = models.CharField(max_length=100, blank=True, null=True)
@@ -179,6 +203,7 @@ class Servicios(models.Model):
     nombre_servicio = models.CharField(max_length=150)
     precio_minimo = models.DecimalField(max_digits=15, decimal_places=2) 
     precio_maximo = models.DecimalField(max_digits=15, decimal_places=2)
+    precio_ideal = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     estado = models.CharField(max_length=20, blank=True, null=True)
 
     class Meta:

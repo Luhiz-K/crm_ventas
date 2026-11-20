@@ -1,0 +1,102 @@
+{% extends 'leads/base.html' %}
+
+{% block titulo %}Motivos{% endblock %}
+{% block encabezado %}Motivos de contrato{% endblock %}
+
+{% block contenido %}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm p-3 h-100"><div class="d-flex justify-content-between align-items-center">
+            <div><div class="text-muted small text-uppercase">Motivos</div><div class="h3 fw-bold m-0">{{ total }}</div></div>
+            <i class="bi bi-tags fs-2 text-primary"></i></div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm p-3 h-100"><div class="d-flex justify-content-between align-items-center">
+            <div><div class="text-muted small text-uppercase">Leads totales</div><div class="h3 fw-bold m-0">{{ total_leads }}</div></div>
+            <i class="bi bi-people fs-2 text-success"></i></div></div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <div class="text-muted small text-uppercase mb-2">Ingresos por motivo — dónde está el dinero (top 8)</div>
+            <div style="height:150px;"><canvas id="graficoMotivos"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="card border-0 shadow-sm p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6"><label class="form-label small text-muted mb-1">Buscar motivo</label>
+            <input type="text" name="q" value="{{ f_q }}" class="form-control" placeholder="Nombre del motivo..."></div>
+        <div class="col-md-3 d-grid"><button class="btn btn-primary"><i class="bi bi-funnel"></i> Filtrar</button></div>
+        <div class="col-md-3 d-grid"><a href="{% url 'listar_motivos' %}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Limpiar</a></div>
+    </div>
+    <div class="mt-2 text-end"><a href="{% url 'crear_motivo' %}" class="btn btn-sm btn-success"><i class="bi bi-plus-circle-fill"></i> Nuevo motivo</a></div>
+</form>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm"><div class="table-responsive">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light"><tr><th>ID</th><th>Motivo</th><th class="text-end">Leads</th><th class="text-end">Ingresos</th></tr></thead>
+                <tbody>
+                    {% for m in motivos %}
+                    <tr class="fila-motivo" style="cursor:pointer;"
+                        data-nombre="{{ m.motivo_contrato }}"
+                        data-leads="{{ m.n_leads }}"
+                        data-ingresos="{{ m.ingresos|default:'0' }}"
+                        data-editar="{% url 'editar_motivo' m.id_contrato %}">
+                        <td class="fw-bold">{{ m.id_contrato }}</td>
+                        <td>{{ m.motivo_contrato }}</td>
+                        <td class="text-end"><span class="badge bg-success-subtle text-success-emphasis">{{ m.n_leads }}</span></td>
+                        <td class="text-end small">${{ m.ingresos|default:'0' }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-4">No hay motivos. Crea el primero (recuerda incluir "Otros").</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm p-3 position-sticky" style="top:1rem;">
+            <div id="panel-vacio" class="text-center text-muted py-5"><i class="bi bi-hand-index-thumb fs-1"></i><p class="mt-2 mb-0">Selecciona un motivo.</p></div>
+            <div id="panel-detalle" class="d-none">
+                <h5 class="fw-bold mb-3"><i class="bi bi-tag text-primary"></i> <span id="d-nombre"></span></h5>
+                <dl class="row small mb-3">
+                    <dt class="col-7 text-muted">Leads con este motivo</dt><dd class="col-5" id="d-leads"></dd>
+                    <dt class="col-7 text-muted">Ingresos</dt><dd class="col-5">$<span id="d-ingresos"></span></dd>
+                </dl>
+                <a id="d-editar" href="#" class="btn btn-outline-primary w-100"><i class="bi bi-pencil-square"></i> Editar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ top|json_script:"datos-motivos" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    document.querySelectorAll('.fila-motivo').forEach(function (f) {
+        f.addEventListener('click', function () {
+            document.querySelectorAll('.fila-motivo').forEach(x => x.classList.remove('table-active'));
+            f.classList.add('table-active');
+            const d = f.dataset;
+            document.getElementById('d-nombre').textContent = d.nombre;
+            document.getElementById('d-leads').textContent = d.leads;
+            document.getElementById('d-ingresos').textContent = d.ingresos;
+            document.getElementById('d-editar').href = d.editar;
+            document.getElementById('panel-vacio').classList.add('d-none');
+            document.getElementById('panel-detalle').classList.remove('d-none');
+        });
+    });
+    const datos = JSON.parse(document.getElementById('datos-motivos').textContent);
+    if (datos.length && datos.some(x => x.ing)) {
+        new Chart(document.getElementById('graficoMotivos'), {
+            type: 'bar',
+            data: { labels: datos.map(x => x.motivo_contrato), datasets: [{ label: 'Ingresos', data: datos.map(x => x.ing || 0) }] },
+            options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+</script>
+{% endblock %}

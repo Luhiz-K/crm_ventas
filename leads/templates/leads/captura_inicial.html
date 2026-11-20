@@ -1,46 +1,111 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ titulo_pagina }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-
-        <div class="card shadow p-4" style="max-width: 600px; margin: 0 auto;">
-            <h2 class="mb-4 text-primary">Ingresa el Teléfono a Registrar</h2>
-            
-            <form method="post">
-                {% csrf_token %}
-                
-                <div class="mb-3">
-                    <label class="form-label">{{ form.numero_marcado.label }}</label>
-                    {{ form.numero_marcado }}
-                    {% if form.numero_marcado.errors %}
-                        <div class="text-danger small">{{ form.numero_marcado.errors }}</div>
-                    {% endif %}
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">{{ form.observacion.label }}</label>
-                    {{ form.observacion }}
-                    {% if form.observacion.errors %}
-                        <div class="text-danger small">{{ form.observacion.errors }}</div>
-                    {% endif %}
-                </div>
-                
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary w-100">Validar y Continuar</button>
-                </div>
-            </form>
+{% extends 'leads/base.html' %}
+{% block contenido %}
+<div class="container-fluid py-3">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <i class="bi bi-telephone-plus me-2"></i>Nuevo lead — datos de contacto
         </div>
+        <div class="card-body">
+
+          <form method="post" id="form-captura" novalidate>
+            {% csrf_token %}
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Teléfono principal</label>
+                {{ form.numero_marcado }}
+                {% for e in form.numero_marcado.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                <div id="estado-telefono" class="small mt-1"></div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Tipo de documento</label>
+                {{ form.tipo_documento }}
+                {% for e in form.tipo_documento.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Número de documento <span class="text-danger">*</span></label>
+                {{ form.numero_documento }}
+                {% for e in form.numero_documento.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                <div id="estado-documento" class="small mt-1"></div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Observación inicial</label>
+                {{ form.observacion }}
+                <div class="form-text">Esta nota viajará con el lead en todo el flujo.</div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+              <a href="{% url 'listar_leads' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Cancelar
+              </a>
+              <button type="submit" id="btn-continuar" class="btn btn-primary">
+                Validar y continuar <i class="bi bi-arrow-right"></i>
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
     </div>
-</body>
-</html>
+  </div>
+</div>
+
+<script>
+(function () {
+  const tel  = document.getElementById('{{ form.numero_marcado.id_for_label }}');
+  const doc  = document.getElementById('{{ form.numero_documento.id_for_label }}');
+  const eTel = document.getElementById('estado-telefono');
+  const eDoc = document.getElementById('estado-documento');
+  const btn  = document.getElementById('btn-continuar');
+
+  function soloDigitos(el) { el.value = el.value.replace(/\D/g, ''); }
+  tel.addEventListener('input', () => soloDigitos(tel));
+
+  // Teléfono: solo informativo (puede pertenecer a otra persona)
+  tel.addEventListener('blur', async () => {
+    eTel.textContent = '';
+    if (tel.value.length !== 10) return;
+    try {
+      const r = await fetch(`{% url 'verificar_telefono' %}?numero=${tel.value}`);
+      const d = await r.json();
+      if (d.existe) {
+        eTel.className = 'small mt-1 text-info';
+        eTel.innerHTML = `<i class="bi bi-info-circle"></i> Teléfono ya registrado a nombre de <b>${d.nombre}</b>.`;
+      } else if (d.valido) {
+        eTel.className = 'small mt-1 text-success';
+        eTel.innerHTML = '<i class="bi bi-check-circle"></i> Teléfono libre.';
+      }
+    } catch (e) {}
+  });
+
+  // Documento: ES LA LLAVE -> decide si se puede continuar
+  doc.addEventListener('blur', async () => {
+    eDoc.textContent = '';
+    const v = doc.value.trim();
+    if (!v) return;
+    try {
+      const r = await fetch(`{% url 'verificar_documento' %}?doc=${encodeURIComponent(v)}`);
+      const d = await r.json();
+      if (d.permitir) {
+        eDoc.className = 'small mt-1 text-success';
+        eDoc.innerHTML = `<i class="bi bi-check-circle"></i> ${d.mensaje}`;
+        if (d.es_propio && d.editar_url) {
+          eDoc.innerHTML += ` <a href="${d.editar_url}">Abrir mi lead</a>`;
+        }
+        btn.disabled = false;
+      } else {
+        eDoc.className = 'small mt-1 text-danger';
+        eDoc.innerHTML = `<i class="bi bi-x-circle"></i> ${d.mensaje}`;
+        btn.disabled = true;
+      }
+    } catch (e) {}
+  });
+})();
+</script>
+{% endblock %}

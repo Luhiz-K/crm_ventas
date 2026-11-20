@@ -1,0 +1,119 @@
+{% extends 'leads/base.html' %}
+
+{% block titulo %}Productos{% endblock %}
+{% block encabezado %}Productos / Servicios{% endblock %}
+
+{% block contenido %}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm p-3 h-100"><div class="d-flex justify-content-between align-items-center">
+            <div><div class="text-muted small text-uppercase">Productos</div><div class="h3 fw-bold m-0">{{ total }}</div></div>
+            <i class="bi bi-box-seam fs-2 text-primary"></i></div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm p-3 h-100"><div class="d-flex justify-content-between align-items-center">
+            <div><div class="text-muted small text-uppercase">Activos</div><div class="h3 fw-bold m-0">{{ activos }}</div></div>
+            <i class="bi bi-check2-circle fs-2 text-success"></i></div></div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <div class="text-muted small text-uppercase mb-2">Más vendidos (top 8)</div>
+            <div style="height:150px;"><canvas id="graficoProd"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="card border-0 shadow-sm p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-5"><label class="form-label small text-muted mb-1">Buscar producto</label>
+            <input type="text" name="q" value="{{ f_q }}" class="form-control" placeholder="Nombre..."></div>
+        <div class="col-md-3"><label class="form-label small text-muted mb-1">Estado</label>
+            <select name="estado" class="form-select">
+                <option value="">Todos</option>
+                <option value="ACTIVO" {% if f_estado == 'ACTIVO' %}selected{% endif %}>Activo</option>
+                <option value="INACTIVO" {% if f_estado == 'INACTIVO' %}selected{% endif %}>Inactivo</option>
+            </select></div>
+        <div class="col-md-2 d-grid"><button class="btn btn-primary"><i class="bi bi-funnel"></i> Filtrar</button></div>
+        <div class="col-md-2 d-grid"><a href="{% url 'listar_servicios' %}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Limpiar</a></div>
+    </div>
+    <div class="mt-2 text-end"><a href="{% url 'crear_servicio' %}" class="btn btn-sm btn-success"><i class="bi bi-plus-circle-fill"></i> Nuevo producto</a></div>
+</form>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm"><div class="table-responsive">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light"><tr><th>ID</th><th>Producto</th><th class="text-end">Mín</th><th class="text-end">Ideal</th><th class="text-end">Máx</th><th>Estado</th></tr></thead>
+                <tbody>
+                    {% for s in servicios %}
+                    <tr class="fila-prod" style="cursor:pointer;"
+                        data-nombre="{{ s.nombre_servicio }}"
+                        data-min="{{ s.precio_minimo }}" data-ideal="{{ s.precio_ideal|default:'—' }}" data-max="{{ s.precio_maximo }}"
+                        data-estado="{{ s.estado|default:'—' }}"
+                        data-veces="{{ s.veces }}" data-ingresos="{{ s.ingresos|default:'0' }}"
+                        data-editar="{% url 'editar_servicio' s.id_servicio %}">
+                        <td class="fw-bold">{{ s.id_servicio }}</td>
+                        <td>{{ s.nombre_servicio }}</td>
+                        <td class="text-end small">${{ s.precio_minimo }}</td>
+                        <td class="text-end fw-semibold">${{ s.precio_ideal|default:'—' }}</td>
+                        <td class="text-end small">${{ s.precio_maximo }}</td>
+                        <td>{% if s.estado == 'ACTIVO' %}<span class="badge bg-success-subtle text-success-emphasis">Activo</span>{% else %}<span class="badge bg-secondary-subtle text-secondary-emphasis">{{ s.estado|default:'—' }}</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No hay productos. Crea el primero.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm p-3 position-sticky" style="top:1rem;">
+            <div id="panel-vacio" class="text-center text-muted py-5"><i class="bi bi-hand-index-thumb fs-1"></i><p class="mt-2 mb-0">Selecciona un producto.</p></div>
+            <div id="panel-detalle" class="d-none">
+                <h5 class="fw-bold mb-3"><i class="bi bi-box-seam text-primary"></i> <span id="d-nombre"></span></h5>
+                <dl class="row small mb-3">
+                    <dt class="col-6 text-muted">Valor mínimo</dt><dd class="col-6">$<span id="d-min"></span></dd>
+                    <dt class="col-6 text-muted">Valor ideal</dt><dd class="col-6 fw-semibold">$<span id="d-ideal"></span></dd>
+                    <dt class="col-6 text-muted">Valor máximo</dt><dd class="col-6">$<span id="d-max"></span></dd>
+                    <dt class="col-6 text-muted">Estado</dt><dd class="col-6" id="d-estado"></dd>
+                    <dt class="col-6 text-muted">Veces vendido</dt><dd class="col-6" id="d-veces"></dd>
+                    <dt class="col-6 text-muted">Ingresos</dt><dd class="col-6">$<span id="d-ingresos"></span></dd>
+                </dl>
+                <a id="d-editar" href="#" class="btn btn-outline-primary w-100"><i class="bi bi-pencil-square"></i> Editar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ top|json_script:"datos-prod" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    document.querySelectorAll('.fila-prod').forEach(function (f) {
+        f.addEventListener('click', function () {
+            document.querySelectorAll('.fila-prod').forEach(x => x.classList.remove('table-active'));
+            f.classList.add('table-active');
+            const d = f.dataset;
+            document.getElementById('d-nombre').textContent = d.nombre;
+            document.getElementById('d-min').textContent = d.min;
+            document.getElementById('d-ideal').textContent = d.ideal;
+            document.getElementById('d-max').textContent = d.max;
+            document.getElementById('d-estado').textContent = d.estado;
+            document.getElementById('d-veces').textContent = d.veces;
+            document.getElementById('d-ingresos').textContent = d.ingresos;
+            document.getElementById('d-editar').href = d.editar;
+            document.getElementById('panel-vacio').classList.add('d-none');
+            document.getElementById('panel-detalle').classList.remove('d-none');
+        });
+    });
+    const datos = JSON.parse(document.getElementById('datos-prod').textContent);
+    if (datos.length && datos.some(x => x.n > 0)) {
+        new Chart(document.getElementById('graficoProd'), {
+            type: 'bar',
+            data: { labels: datos.map(x => x.nombre_servicio), datasets: [{ label: 'Veces vendido', data: datos.map(x => x.n) }] },
+            options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+</script>
+{% endblock %}

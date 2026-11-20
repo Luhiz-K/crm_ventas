@@ -138,7 +138,13 @@
             <h5 class="text-primary border-bottom pb-2 mb-3"><i class="bi bi-clock-history"></i> Historial de Bitácora</h5>
             <div class="bg-light p-3 rounded mb-3 border" style="max-height: 200px; overflow-y: auto;">
                 {% for obs in historial_obs %}
-                    <div class="border-bottom mb-2 pb-2"><small class="text-muted">{{ obs.fecha_registro }}</small><p class="m-0 text-dark">{{ obs.observacion }}</p></div>
+                    <div class="border-bottom mb-2 pb-2">
+                        <small class="text-muted">
+                            {{ obs.fecha_registro }}
+                            {% if obs.id_trabajador %}· <b>{{ obs.id_trabajador.id_persona.nombres }} {{ obs.id_trabajador.id_persona.apellidos }}</b>{% else %}· <span class="fst-italic">Sistema</span>{% endif %}
+                        </small>
+                        <p class="m-0 text-dark">{{ obs.observacion }}</p>
+                    </div>
                 {% empty %}
                     <p class="text-muted text-center m-0">No hay observaciones previas.</p>
                 {% endfor %}

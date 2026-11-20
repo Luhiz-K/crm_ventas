@@ -1,0 +1,197 @@
+{% extends 'leads/base.html' %}
+{% block contenido %}
+<div class="container-fluid py-3">
+
+  <!-- Barra de pasos -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    {% for num, nombre, icono in pasos %}
+      <div class="text-center flex-fill">
+        <div class="rounded-circle d-inline-flex align-items-center justify-content-center
+                    {% if num == paso %}bg-primary text-white{% elif num < paso %}bg-success text-white{% else %}bg-light text-muted border{% endif %}"
+             style="width:42px;height:42px;">
+          {% if num < paso %}<i class="bi bi-check-lg"></i>{% else %}<i class="bi {{ icono }}"></i>{% endif %}
+        </div>
+        <div class="small mt-1 {% if num == paso %}fw-bold{% else %}text-muted{% endif %}">{{ nombre }}</div>
+      </div>
+      {% if not forloop.last %}<div class="flex-fill border-top mx-1" style="height:1px;margin-top:-20px;"></div>{% endif %}
+    {% endfor %}
+  </div>
+
+  <!-- Identificadores del lead (crecen con el flujo) -->
+  <div class="alert alert-light border d-flex flex-wrap gap-4 mb-3 py-2">
+    {% for item in identificadores %}
+      <div>
+        <div class="text-muted small">{{ item.label }}{% if item.lock %} <i class="bi bi-lock-fill"></i>{% endif %}</div>
+        <b>{{ item.valor|default:"—" }}</b>
+      </div>
+    {% endfor %}
+  </div>
+
+  <form method="post" id="form-wizard">
+    {% csrf_token %}
+    <div class="row g-3">
+
+      <!-- Columna principal -->
+      <div class="col-lg-8">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            {% if paso == 1 %}
+              <h5 class="mb-3"><i class="bi bi-person-vcard me-2"></i>Datos de la persona</h5>
+              <div class="row g-3">
+                {% for field in form %}
+                  <div class="col-md-6">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                  </div>
+                {% endfor %}
+              </div>
+
+            {% elif paso == 2 %}
+              <h5 class="mb-1"><i class="bi bi-key me-2"></i>Accesos a plataformas</h5>
+              <p class="text-muted small mb-3">Credenciales que el cliente entrega para consultar su reporte en las centrales de riesgo. La clave queda enmascarada; usa <i class="bi bi-clipboard"></i> para copiarla sin revelarla.</p>
+
+              <div id="plats-wrap">
+                {% for pl in plataformas %}
+                  <div class="row g-2 mb-2 plat-row align-items-end">
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Plataforma</label>
+                      <input name="plat_nombre" class="form-control form-control-sm" value="{{ pl.plataforma|default:'' }}" placeholder="Datacrédito...">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Usuario</label>
+                      <input name="plat_usuario" class="form-control form-control-sm" value="{{ pl.usuario|default:'' }}">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small mb-0">Clave</label>
+                      <div class="input-group input-group-sm">
+                        <input name="plat_password" type="password" class="form-control plat-pass" value="{{ pl.password|default:'' }}">
+                        <button type="button" class="btn btn-outline-secondary btn-copy" title="Copiar clave"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-0">Descripción</label>
+                      <input name="plat_desc" class="form-control form-control-sm" value="{{ pl.descripcion|default:'' }}">
+                    </div>
+                    <div class="col-md-1 text-end">
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-del-plat" title="Quitar acceso"><i class="bi bi-trash"></i></button>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+
+              <button type="button" class="btn btn-outline-primary btn-sm mt-1" id="add-plat"><i class="bi bi-plus-lg"></i> Agregar acceso</button>
+
+              <div class="alert alert-light border mt-3 mb-0 small text-muted">
+                <i class="bi bi-paperclip"></i> Los <b>reportes</b> (pantallazos, PDF) se suben en esta misma etapa — los conecto en el siguiente commit.
+              </div>
+
+            {% else %}
+              <div class="text-center text-muted py-5">
+                <i class="bi bi-cone-striped fs-1"></i>
+                <p class="mt-2">Paso {{ paso }} en construcción (Fase siguiente).</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna de observaciones (siempre) -->
+      <div class="col-lg-4">
+        <div class="card shadow-sm">
+          <div class="card-header"><i class="bi bi-journal-text me-2"></i>Observaciones</div>
+          <div class="card-body">
+            <textarea name="observaciones" class="form-control" rows="8"
+                      placeholder="Notas de la gestión...">{{ observaciones }}</textarea>
+            <div class="form-text">Se conservan en todos los pasos.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Navegación -->
+    <div class="d-flex justify-content-between mt-4">
+      {% if paso > 1 %}
+        <button type="submit" name="accion" value="anterior" class="btn btn-outline-secondary" formnovalidate>
+          <i class="bi bi-arrow-left"></i> Anterior
+        </button>
+      {% else %}
+        <a href="{% url 'captura_inicial' %}" class="btn btn-outline-danger" data-salir="1">
+          <i class="bi bi-x-lg"></i> Salir
+        </a>
+      {% endif %}
+
+      {% if paso < total_pasos %}
+        <button type="submit" name="accion" value="siguiente" class="btn btn-primary">
+          Siguiente <i class="bi bi-arrow-right"></i>
+        </button>
+      {% else %}
+        <button type="submit" name="accion" value="guardar" class="btn btn-success">
+          <i class="bi bi-check2-circle"></i> Guardar lead
+        </button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<script>
+// Navegación interna y aviso de salida
+(function () {
+  var navInterna = false;
+  document.querySelectorAll('#form-wizard button[type=submit]').forEach(function (b) {
+    b.addEventListener('click', function () { navInterna = true; });
+  });
+  var salir = document.querySelector('[data-salir]');
+  if (salir) salir.addEventListener('click', function (e) {
+    if (!confirm('¿Seguro que deseas salir? Se perderá el lead en progreso.')) e.preventDefault();
+    else navInterna = true;
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (!navInterna) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+</script>
+
+<script>
+// Paso Plataformas: agregar / quitar / copiar (la 1a fila ya viene del servidor)
+(function () {
+  var wrap = document.getElementById('plats-wrap');
+  if (!wrap) return;
+
+  var add = document.getElementById('add-plat');
+  if (add) add.addEventListener('click', function () {
+    var rows = wrap.querySelectorAll('.plat-row');
+    var clone = rows[rows.length - 1].cloneNode(true);
+    clone.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+    wrap.appendChild(clone);
+  });
+
+  wrap.addEventListener('click', function (e) {
+    // Quitar (con confirmación)
+    var del = e.target.closest('.btn-del-plat');
+    if (del) {
+      var row = del.closest('.plat-row');
+      var campoNombre = row.querySelector('input[name=plat_nombre]');
+      var nombre = (campoNombre && campoNombre.value || '').trim();
+      var etiqueta = nombre ? ('el acceso de "' + nombre + '"') : 'este acceso';
+      if (!confirm('¿Eliminar ' + etiqueta + '? Perderás la contraseña guardada y tendrías que volver a pedírsela al cliente.')) return;
+      var rows = wrap.querySelectorAll('.plat-row');
+      if (rows.length > 1) row.remove();
+      else row.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+      return;
+    }
+    // Copiar clave sin revelarla
+    var copy = e.target.closest('.btn-copy');
+    if (copy) {
+      var inp = copy.closest('.input-group').querySelector('.plat-pass');
+      navigator.clipboard.writeText(inp.value || '').then(function () {
+        var ic = copy.querySelector('i');
+        ic.className = 'bi bi-check2';
+        setTimeout(function () { ic.className = 'bi bi-clipboard'; }, 1200);
+      });
+    }
+  });
+})();
+</script>
+{% endblock %}

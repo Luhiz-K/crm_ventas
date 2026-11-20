@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-o98j@ms@pnx%z-h!m-jb^r3h-4spt$f%j6hv&6x_16$dsmmo)*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -50,9 +50,13 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'leads.middleware.SesionRequeridaMiddleware',   # nuestro candado de sesión (va de último)
 ]
 
 ROOT_URLCONF = 'deudoor_config.urls'
+
+# A dónde enviamos a quien no tiene sesión (lo resuelve redirect('login') del middleware)
+LOGIN_URL = '/leads/login/'
 
 TEMPLATES = [
     {

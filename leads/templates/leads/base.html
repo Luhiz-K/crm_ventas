@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeuDoor - {% block titulo %}Panel{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        #sidebar { flex: 0 0 240px; min-height: 100vh; }   /* ancho fijo: no se encoge */
+        #sidebar .nav-link { color: #495057; border-radius: .5rem; }
+        #sidebar .nav-link:hover { background: #f1f3f5; }
+        #sidebar .nav-link.active { background: #0d6efd; color: #fff; }
+        .metric-card { transition: transform .2s; border: none; }
+        .metric-card:hover { transform: translateY(-5px); }
+        @media (max-width: 768px) { #sidebar { width: 70px; } #sidebar .etiqueta { display:none; } }
+    </style>
+</head>
+<body class="bg-light">
+<div class="d-flex">
+
+    <!-- ===== SIDEBAR (navegación, cambia según el rol) ===== -->
+    <nav id="sidebar" class="bg-white shadow-sm p-3 d-flex flex-column">
+        <div class="mb-4 text-center">
+            <h4 class="text-primary fw-bold m-0"><i class="bi bi-speedometer2"></i> <span class="etiqueta">DeuDoor</span></h4>
+        </div>
+        <ul class="nav flex-column gap-1">
+            <li class="nav-item">
+                <a href="{% url 'panel_control' %}" class="nav-link {% if request.resolver_match.url_name == 'panel_control' %}active{% endif %}">
+                    <i class="bi bi-house-door"></i> <span class="etiqueta">Inicio</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'listar_leads' %}" class="nav-link {% if request.resolver_match.url_name == 'listar_leads' %}active{% endif %}">
+                    <i class="bi bi-people"></i> <span class="etiqueta">Leads</span>
+                </a>
+            </li>
+
+            {% if request.session.rol == 'Gerente General' %}
+            <li class="nav-item mt-3"><span class="text-muted small text-uppercase px-2 etiqueta">Gestión</span></li>
+            <li class="nav-item">
+                <a href="{% url 'listar_ciudades' %}" class="nav-link {% if request.resolver_match.url_name == 'listar_ciudades' %}active{% endif %}">
+                    <i class="bi bi-geo-alt"></i> <span class="etiqueta">Ciudades</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'listar_sedes' %}" class="nav-link {% if request.resolver_match.url_name == 'listar_sedes' %}active{% endif %}">
+                    <i class="bi bi-building"></i> <span class="etiqueta">Sedes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'listar_trabajadores' %}" class="nav-link {% if request.resolver_match.url_name == 'listar_trabajadores' %}active{% endif %}">
+                    <i class="bi bi-person-badge"></i> <span class="etiqueta">Trabajadores</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'listar_servicios' %}" class="nav-link {% if request.resolver_match.url_name == 'listar_servicios' %}active{% endif %}">
+                    <i class="bi bi-box-seam"></i> <span class="etiqueta">Productos</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'listar_motivos' %}" class="nav-link {% if request.resolver_match.url_name == 'listar_motivos' %}active{% endif %}">
+                    <i class="bi bi-tags"></i> <span class="etiqueta">Motivos</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'listar_buros' %}" class="nav-link {% if request.resolver_match.url_name == 'listar_buros' %}active{% endif %}">
+                    <i class="bi bi-bank"></i> <span class="etiqueta">Burós</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <li class="nav-item mt-3"><span class="text-muted small text-uppercase px-2 etiqueta">Próximamente</span></li>
+            <li class="nav-item"><span class="nav-link disabled"><i class="bi bi-bar-chart"></i> <span class="etiqueta">Resúmenes</span></span></li>
+            <li class="nav-item"><span class="nav-link disabled"><i class="bi bi-calendar-event"></i> <span class="etiqueta">Calendario</span></span></li>
+        </ul>
+    </nav>
+
+    <!-- ===== ZONA PRINCIPAL ===== -->
+    <div class="flex-grow-1 d-flex flex-column" style="min-width: 0;">
+
+        <!-- Barra superior con el menú de usuario a la derecha -->
+        <header class="bg-white shadow-sm d-flex justify-content-between align-items-center px-4 py-2">
+            <h5 class="m-0 text-secondary">{% block encabezado %}Panel de Control{% endblock %}</h5>
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-decoration-none text-dark dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle fs-3 text-primary me-2"></i>
+                    <div class="text-end lh-sm me-1">
+                        <div class="fw-semibold">{{ request.session.nombre|default:'Usuario' }}</div>
+                        <div class="small text-muted">{{ request.session.rol }}</div>
+                    </div>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                    <li><a class="dropdown-item disabled" href="#"><i class="bi bi-gear"></i> Mi cuenta</a></li>
+                    <li><a class="dropdown-item disabled" href="#"><i class="bi bi-key"></i> Cambiar contraseña</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Cerrar sesión</a></li>
+                </ul>
+            </div>
+        </header>
+
+        <!-- Contenido de cada página -->
+        <main class="p-4">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'secondary' }}{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% block contenido %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
