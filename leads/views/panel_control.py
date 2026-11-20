@@ -1,5 +1,8 @@
+"""Panel de control: resumen general y estado de la configuración base."""
+
 from django.shortcuts import render
 from ..models import Ciudad, Sede, Trabajador, Leads
+
 
 def panel_control(request):
     tiene_ciudades = Ciudad.objects.exists()

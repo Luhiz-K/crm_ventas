@@ -1,3 +1,5 @@
+"""Formulario de captura inicial del lead (teléfono y documento)."""
+
 from django import forms
 
 

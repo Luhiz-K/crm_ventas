@@ -1,3 +1,5 @@
+"""CRUD del catálogo de ciudades, con conteo de trabajadores y clientes."""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Q
 from ..models import Ciudad, Persona, Trabajador

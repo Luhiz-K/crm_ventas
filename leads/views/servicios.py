@@ -1,3 +1,5 @@
+"""CRUD del catálogo de servicios y su banda de precios."""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Sum
 from ..models import Servicios

@@ -1,4 +1,5 @@
-# leads/decoradores.py
+"""Decoradores de autorización por rol para las vistas."""
+
 from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages

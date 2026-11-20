@@ -17,3 +17,9 @@ db.sqlite3
 Thumbs.db
 .history/
 media/
+
+# Scripts utilitarios de un solo uso (fuera del control de versiones)
+arreglar_luis.py
+crear_luis.py
+crear_base_prueba.py
+borrar_todo.py

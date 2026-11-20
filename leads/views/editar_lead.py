@@ -1,3 +1,9 @@
+"""Gestión de abonos de un lead y recálculo del estado de sus cuotas.
+
+La edición integral del lead vive en el wizard; aquí quedan el registro y la
+eliminación de abonos, más la redirección de la ruta antigua de edición.
+"""
+
 from datetime import date
 from django.shortcuts import redirect, get_object_or_404
 from django.db.models import Sum
@@ -6,7 +12,7 @@ from ..utils import trabajador_actual
 
 
 def editar_lead(request, id_lead):
-    # El panel viejo quedó reemplazado por la vista de detalle (ver_lead).
+    """Ruta heredada: redirige a la vista de detalle, que la reemplazó."""
     return redirect('ver_lead', id_lead=id_lead)
 
 

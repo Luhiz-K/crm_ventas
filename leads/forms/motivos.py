@@ -1,3 +1,5 @@
+"""Formulario del catálogo de motivos de contrato."""
+
 from django import forms
 from ..models import MotivoContrato
 

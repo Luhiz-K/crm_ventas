@@ -1,3 +1,5 @@
+"""Formularios auxiliares para la edición de un lead."""
+
 from django import forms
 from ..models import Persona, Leads
 

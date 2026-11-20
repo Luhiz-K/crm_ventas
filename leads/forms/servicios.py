@@ -1,3 +1,5 @@
+"""Formulario del catálogo de servicios y su banda de precios."""
+
 from django import forms
 from ..models import Servicios
 

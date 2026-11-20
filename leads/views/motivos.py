@@ -1,3 +1,5 @@
+"""CRUD del catálogo de motivos de contrato, con métricas de uso."""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Sum
 from ..models import MotivoContrato, Leads

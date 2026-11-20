@@ -1,3 +1,10 @@
+"""Vista de detalle (solo lectura) de un lead.
+
+Muestra datos personales, teléfonos, servicios, accesos, reportes, el plan de
+pagos con sus abonos y la bitácora. La única acción de escritura es agregar una
+anotación a la bitácora.
+"""
+
 from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
@@ -7,6 +14,7 @@ from ..utils import trabajador_actual
 
 
 def ver_lead(request, id_lead):
+    """Renderiza el detalle del lead y procesa el alta de notas de bitácora."""
     lead = get_object_or_404(Leads, id_lead=id_lead)
     persona = lead.id_persona
     acuerdo = lead.id_acuerdo_pago

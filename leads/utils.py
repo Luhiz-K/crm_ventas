@@ -1,3 +1,5 @@
+"""Funciones auxiliares compartidas por las vistas (sesión, enmascarado, etc.)."""
+
 from .models import Ciudad, Sede, Trabajador, Usuario
 
 

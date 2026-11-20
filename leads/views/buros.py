@@ -1,3 +1,5 @@
+"""CRUD del catálogo de burós de crédito (acceso solo para Gerente General)."""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count
 from ..models import Buro

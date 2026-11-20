@@ -1,3 +1,5 @@
+"""Formulario del catálogo de sedes, con selección de responsable."""
+
 from django import forms
 from ..models import Sede, Trabajador
 

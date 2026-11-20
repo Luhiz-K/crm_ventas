@@ -1,3 +1,5 @@
+"""Formulario de alta y edición de trabajadores."""
+
 from django import forms
 from ..models import Sede, Cargo
 

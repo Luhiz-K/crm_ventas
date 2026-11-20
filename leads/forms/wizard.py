@@ -1,3 +1,5 @@
+"""Formulario de datos personales del paso 1 del wizard."""
+
 from django import forms
 from ..models import Persona
 

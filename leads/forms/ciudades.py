@@ -1,3 +1,5 @@
+"""Formulario del catálogo de ciudades."""
+
 from django import forms
 from ..models import Ciudad
 

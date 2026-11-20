@@ -20,8 +20,8 @@ def registro_persona_nueva(request):
                     # A. Guardamos la Persona (esto funciona porque es un ModelForm)
                     nueva_persona = form.save()
                     
-                    # B. Buscamos el primer trabajador de tu base de datos
-                    # (Más adelante lo cambiaremos por el trabajador logueado)
+                    # B. Obtiene el primer trabajador registrado.
+                    # TODO: reemplazar por el trabajador autenticado en sesión.
                     trabajador_asignado = Trabajador.objects.first()
                     if not trabajador_asignado:
                         raise Exception("CRÍTICO: No hay registros en la tabla 'trabajador'. Crea uno en pgAdmin primero.")

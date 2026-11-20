@@ -1,3 +1,10 @@
+"""Asistente de captura y edición de leads (wizard de 4 pasos).
+
+Gestiona el flujo Persona -> Plataformas -> Plan de pago -> Resumen sobre un
+borrador en sesión y persiste todo en una sola transacción. Incluye el modo
+edición, con restricciones según el rol del usuario.
+"""
+
 import os
 import uuid
 from datetime import date
@@ -16,7 +23,7 @@ from ..utils import trabajador_actual
 
 TMP_REPORTES = 'tmp_wizard_reportes'
 
-# --- Permisos por rol (escalable: agrega aquí roles con edición total) ---
+# Roles con edición total del lead (ampliable añadiendo roles al conjunto).
 ROLES_EDICION_TOTAL = {'Gerente General'}
 
 
@@ -63,7 +70,7 @@ def _persona_form(request, borrador, bound):
 
 
 def _identificadores(borrador):
-    """Encabezado del lead. Crece con el flujo: aquí se van sumando ítems."""
+    """Construye los ítems del encabezado del lead según el avance del borrador."""
     items = [
         {'label': 'Teléfono', 'valor': borrador.get('telefono', ''), 'lock': False},
         {'label': 'Tipo doc.', 'valor': borrador.get('tipo_documento', ''), 'lock': False},
@@ -85,8 +92,7 @@ def _identificadores(borrador):
         direccion = ', '.join(x for x in partes if x)
         if direccion:
             items.append({'label': 'Dirección', 'valor': direccion, 'lock': False})
-    # Fase Acuerdo -> aquí sumaremos Servicio + Valor (borrador['acuerdo'])
-    # Fase Motivo  -> aquí sumaremos Motivo (borrador['motivo'])
+    # Puntos de extensión: servicio+valor (borrador['acuerdo']) y motivo (borrador['motivo']).
     return items
 
 

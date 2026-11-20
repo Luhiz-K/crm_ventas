@@ -1,3 +1,9 @@
+"""Listado de leads y detalle en JSON para el panel de vista rápida.
+
+Incluye el alcance por rol (el Gerente ve todos; el asesor solo los suyos),
+filtros, métricas, paginación ajustable y el endpoint de detalle del preview.
+"""
+
 from datetime import date
 from django.shortcuts import render
 from django.http import JsonResponse

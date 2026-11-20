@@ -1,8 +1,12 @@
-# leads/middleware.py
+"""Middleware de control de sesión.
+
+Exige una sesión activa para acceder a las rutas privadas del sitio. Las rutas
+públicas (login/logout, APIs con JWT, admin, estáticos y media) quedan exentas.
+"""
+
 from django.shortcuts import redirect
 
-# Rutas que NO exigen sesión: el propio login/logout, las APIs (usan su JWT),
-# el admin de Django, y los archivos estáticos/subidos.
+# Prefijos de ruta que no requieren sesión de usuario.
 PREFIJOS_PUBLICOS = (
     '/leads/login/',
     '/leads/logout/',
@@ -12,20 +16,21 @@ PREFIJOS_PUBLICOS = (
     '/static/',
 )
 
+
 class SesionRequeridaMiddleware:
     def __init__(self, get_response):
-        # Django ejecuta esto UNA sola vez, al arrancar el servidor.
+        # Inicialización única al arrancar el servidor.
         self.get_response = get_response
 
     def __call__(self, request):
-        # Esto corre en CADA petición, ANTES de llegar a la vista.
+        # Se ejecuta en cada petición, antes de resolver la vista.
         ruta = request.path
         es_publica = ruta.startswith(PREFIJOS_PUBLICOS)
         hay_sesion = request.session.get('id_usuario') is not None
 
-        # Sin sesión y pidiendo algo privado -> lo mandamos al login.
+        # Petición privada sin sesión: redirige al login.
         if not es_publica and not hay_sesion:
             return redirect('login')
 
-        # Con sesión (o ruta pública) -> que siga su camino normal.
+        # Ruta pública o sesión válida: continúa el flujo normal.
         return self.get_response(request)

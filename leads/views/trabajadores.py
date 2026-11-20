@@ -1,3 +1,5 @@
+"""CRUD de trabajadores, con cargos base y coherencia responsable-sede."""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Q
 from ..models import Trabajador, Cargo, Sede, Persona, Telefonos
@@ -31,8 +33,10 @@ def listar_trabajadores(request):
 
 
 def _sincronizar_responsable(trabajador):
-    """Coherencia: un responsable debe trabajar en la sede que dirige.
-    Si el trabajador es responsable de una sede distinta a la suya, lo soltamos."""
+    """Garantiza que un responsable solo dirija la sede donde trabaja.
+
+    Lo desvincula como responsable de cualquier otra sede distinta a la suya.
+    """
     qs = Sede.objects.filter(id_responsable=trabajador.id_persona)
     if trabajador.id_sede_id:
         qs = qs.exclude(pk=trabajador.id_sede_id)

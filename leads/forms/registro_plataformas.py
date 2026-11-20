@@ -20,7 +20,7 @@ class PlataformasReporteForm(forms.Form):
     # --- 1. DATACRÉDITO ---
     datacredito_usuario = forms.CharField(label="Usuario", required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     datacredito_password = forms.CharField(label="Contraseña", required=False, widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'new-password'}))
-    # Usamos nuestra nueva superclase
+    # Usa la superclase base de formularios del proyecto
     datacredito_archivos = MultipleFileField(label="Reportes (Múltiples PDF/Img)", required=False)
     datacredito_notas = forms.CharField(label="Notas Adicionales", required=False, widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}))
 

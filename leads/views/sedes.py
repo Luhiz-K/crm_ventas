@@ -1,3 +1,5 @@
+"""CRUD del catálogo de sedes y sincronización de su responsable."""
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count
 from ..models import Sede, Trabajador

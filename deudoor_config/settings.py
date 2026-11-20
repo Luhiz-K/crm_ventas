@@ -50,7 +50,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'leads.middleware.SesionRequeridaMiddleware',   # nuestro candado de sesión (va de último)
+    'leads.middleware.SesionRequeridaMiddleware',   # Control de sesión (debe ir al final de la cadena)
 ]
 
 ROOT_URLCONF = 'deudoor_config.urls'
@@ -130,5 +130,5 @@ STATIC_URL = 'static/'
 # URL pública por la que se accederá a los archivos en el navegador
 MEDIA_URL = '/media/'
 
-# Ruta física en tu disco duro (o servidor) donde se guardarán las carpetas
+# Ruta física del servidor donde se almacenan los archivos subidos
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

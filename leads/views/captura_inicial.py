@@ -1,3 +1,9 @@
+"""Captura inicial de un lead (teléfono y documento) y verificaciones AJAX.
+
+El documento es la llave de deduplicación: decide si se reutiliza una persona
+existente o se crea una nueva, y bloquea clientes ya vendidos por otro asesor.
+"""
+
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import JsonResponse
@@ -7,6 +13,7 @@ from ..utils import trabajador_actual, enmascarar
 
 
 def _persona_por_telefono(numero):
+    """Devuelve la persona asociada a un teléfono (por contacto o por lead)."""
     tel = Telefonos.objects.select_related('id_persona').filter(numero_telefono=numero).first()
     if tel:
         return tel.id_persona
@@ -24,6 +31,7 @@ def _continuar(request, numero, observacion, tipo, documento, reusar):
 
 
 def iniciar_captura_lead(request):
+    """Procesa la captura inicial y decide reutilizar o crear la persona."""
     if request.method == 'POST':
         form = CapturaTelefonoForm(request.POST)
         if form.is_valid():
@@ -32,7 +40,7 @@ def iniciar_captura_lead(request):
             tipo = form.cleaned_data['tipo_documento']
             documento = form.cleaned_data['numero_documento']
 
-            # --- La LLAVE es el DOCUMENTO ---
+            # El documento es la llave de deduplicación.
             persona_doc = Persona.objects.filter(numero_documento_persona=documento).first()
             if persona_doc:
                 mi_trab = trabajador_actual(request)
