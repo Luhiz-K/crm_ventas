@@ -219,8 +219,13 @@ def _recolectar_acuerdo(request):
 
 
 def _validar_acuerdo(acuerdo):
-    errores = []
     servicios = [s for s in (acuerdo.get('servicios') or []) if s.get('servicio_id')]
+    cuotas = [c for c in (acuerdo.get('cuotas') or []) if c.get('valor') or c.get('fecha')]
+    # El plan de pago depende del servicio: sin servicio es un prospecto y no se valida
+    # (las cuotas sueltas o en cero se ignoran). Con servicio, las cuotas son obligatorias.
+    if not servicios:
+        return []
+    errores = []
     if not servicios:
         errores.append('Agrega al menos un servicio.')
     ids = [s['servicio_id'] for s in servicios]
@@ -235,7 +240,6 @@ def _validar_acuerdo(acuerdo):
         total += d
         if cat and (d < cat.precio_minimo or d > cat.precio_maximo):
             errores.append(f"'{cat.nombre_servicio}': ${d} está fuera del rango permitido (${cat.precio_minimo} – ${cat.precio_maximo}).")
-    cuotas = [c for c in (acuerdo.get('cuotas') or []) if c.get('valor') or c.get('fecha')]
     if not cuotas:
         errores.append('Agrega al menos una cuota.')
     suma = Decimal('0')
@@ -413,9 +417,8 @@ def _validar_guardado(borrador, asesor):
         errores.append('No se pudo identificar tu usuario trabajador. Inicia sesión de nuevo.')
     if not (borrador.get('persona') or {}).get('nombres'):
         errores.append('Faltan los datos de la persona (vuelve al paso 1).')
+    # El plan de pago y el motivo son opcionales: un lead puede guardarse como prospecto.
     errores += _validar_acuerdo(borrador.get('acuerdo') or {})
-    if not borrador.get('motivo'):
-        errores.append('Selecciona el motivo del contrato.')
     return errores
 
 
@@ -433,12 +436,16 @@ def _guardar_todo(borrador, asesor):
                 raise Exception('Este cliente ya fue vendido por otro asesor.')
         persona = _crear_o_reusar_persona(borrador)
         _crear_telefonos(persona, borrador)
-        acuerdo = _crear_acuerdo_db(borrador)
+        # Hay venta si el plan de pago trae al menos un servicio; si no, es un prospecto.
+        servicios = [s for s in (borrador.get('acuerdo') or {}).get('servicios') or []
+                     if s.get('servicio_id')]
+        tiene_venta = bool(servicios)
+        acuerdo = _crear_acuerdo_db(borrador) if tiene_venta else None
         motivo = MotivoContrato.objects.filter(id_contrato=borrador.get('motivo')).first()
         lead = Leads.objects.create(
             id_persona=persona, id_trabajador=asesor,
             id_contrato=motivo, id_acuerdo_pago=acuerdo,
-            estado_lead='NUEVO', estado_venta='LEAD',
+            estado_lead='NUEVO', estado_venta='VENDIDO' if tiene_venta else 'LEAD',
             telefono_marcado=borrador.get('telefono'))
         _crear_accesos(lead, borrador)
         _mover_reportes(lead, borrador)
@@ -601,6 +608,30 @@ def wizard_lead(request, paso=1):
     if request.method == 'POST':
         accion = request.POST.get('accion', 'siguiente')
         borrador['observaciones'] = request.POST.get('observaciones', borrador.get('observaciones', ''))
+
+        # Guardar como prospecto (LEAD libre) desde cualquier paso, solo al crear.
+        # Conserva lo escrito en el paso actual pero NO guarda el plan de pago: el
+        # registro queda incompleto y disponible para que otro asesor lo retome.
+        if accion == 'guardar_prospecto' and not borrador.get('editando'):
+            if paso == 1:
+                borrador['persona'] = {f: request.POST.get(f, '') for f in PERSONA_FIELDS}
+            elif paso == 2:
+                borrador['plataformas'] = _recolectar_plataformas(request)
+            borrador['acuerdo'] = {}  # prospecto: sin venta
+            asesor = trabajador_actual(request)
+            errores = _validar_guardado(borrador, asesor)
+            form = _persona_form(request, borrador, bound=False) if paso == 1 else None
+            if errores:
+                request.session['borrador_lead'] = borrador
+                return _render(request, paso, borrador, form, errores=errores)
+            try:
+                lead = _guardar_todo(borrador, asesor)
+            except Exception as e:
+                request.session['borrador_lead'] = borrador
+                return _render(request, paso, borrador, form, errores=[f'No se pudo guardar: {e}'])
+            request.session.pop('borrador_lead', None)
+            messages.success(request, f'Lead #{lead.id_lead} guardado como prospecto (libre).')
+            return redirect('ver_lead', id_lead=lead.id_lead)
 
         # Paso 2: subir / quitar reportes NO navega, re-renderiza el mismo paso
         quitar_idx = request.POST.get('quitar_idx')

@@ -431,6 +431,13 @@
         {% endif %}
       </div>
 
+      {% if not editando %}
+        <button type="submit" name="accion" value="guardar_prospecto" class="btn btn-outline-success" formnovalidate
+                onclick="return confirm('Se guardará como prospecto (sin venta) y quedará libre para que otro asesor lo retome. ¿Continuar?');">
+          <i class="bi bi-bookmark-plus"></i> Guardar como prospecto
+        </button>
+      {% endif %}
+
       {% if paso < total_pasos %}
         <button type="submit" name="accion" value="siguiente" class="btn btn-primary">
           Siguiente <i class="bi bi-arrow-right"></i>
