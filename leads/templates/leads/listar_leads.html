@@ -46,16 +46,25 @@
 <!-- ===== Filtros ===== -->
 <form method="get" class="card border-0 shadow-sm p-3 mb-3">
     <div class="row g-2 align-items-end">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label small text-muted mb-1">Buscar (nombre, documento, teléfono, id)</label>
             <input type="text" name="q" value="{{ f_q }}" class="form-control" placeholder="Escribe para buscar...">
         </div>
-        <div class="col-md-3">
-            <label class="form-label small text-muted mb-1">Estado</label>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Estado (proceso)</label>
             <select name="estado" class="form-select">
                 <option value="">Todos</option>
                 {% for e in estados %}
                 <option value="{{ e }}" {% if e == f_estado %}selected{% endif %}>{{ e }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Venta</label>
+            <select name="estado_venta" class="form-select">
+                <option value="">Todas</option>
+                {% for v in estados_venta %}
+                <option value="{{ v }}" {% if v == f_estado_venta %}selected{% endif %}>{{ v }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -90,6 +99,7 @@
                     <form method="get" class="d-flex align-items-center gap-2 m-0">
                         {% if f_q %}<input type="hidden" name="q" value="{{ f_q }}">{% endif %}
                         {% if f_estado %}<input type="hidden" name="estado" value="{{ f_estado }}">{% endif %}
+                        {% if f_estado_venta %}<input type="hidden" name="estado_venta" value="{{ f_estado_venta }}">{% endif %}
                         {% if f_fecha %}<input type="hidden" name="fecha" value="{{ f_fecha }}">{% endif %}
                         {% if f_rango %}<input type="hidden" name="rango" value="{{ f_rango }}">{% endif %}
                         <label class="small text-muted m-0">Por página</label>
@@ -116,21 +126,22 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle m-0">
                     <thead class="table-light">
-                        <tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Estado</th><th>Fecha</th></tr>
+                        <tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Estado</th><th>Venta</th><th>Fecha</th></tr>
                     </thead>
                     <tbody>
                         {% for lead in leads %}
-                        <tr class="fila-lead" style="cursor:pointer;"
+                        <tr class="fila-lead {% if lead.estado_venta == 'VENDIDO' %}table-success{% elif lead.estado_venta == 'FINALIZADO' %}table-info{% else %}table-secondary{% endif %}" style="cursor:pointer;"
                             data-detalle="{% url 'detalle_lead' lead.id_lead %}"
                             data-editar="{% url 'ver_lead' lead.id_lead %}">
                             <td class="fw-bold">{{ lead.id_lead }}</td>
                             <td>{% if lead.id_persona %}{{ lead.id_persona.nombres }} {{ lead.id_persona.apellidos }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
                             <td>{{ lead.telefono_marcado|default:'—' }}</td>
                             <td><span class="badge bg-info-subtle text-info-emphasis">{{ lead.estado_lead }}</span></td>
+                            <td><span class="badge {% if lead.estado_venta == 'VENDIDO' %}bg-success-subtle text-success-emphasis{% elif lead.estado_venta == 'FINALIZADO' %}bg-info-subtle text-info-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %}">{{ lead.estado_venta }}</span></td>
                             <td class="small text-muted">{{ lead.fecha_creacion }}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="5" class="text-center text-muted py-4">No hay leads para este filtro.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-4">No hay leads para este filtro.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -141,6 +152,7 @@
                     <form method="get" class="d-flex align-items-center gap-2 m-0">
                         {% if f_q %}<input type="hidden" name="q" value="{{ f_q }}">{% endif %}
                         {% if f_estado %}<input type="hidden" name="estado" value="{{ f_estado }}">{% endif %}
+                        {% if f_estado_venta %}<input type="hidden" name="estado_venta" value="{{ f_estado_venta }}">{% endif %}
                         {% if f_fecha %}<input type="hidden" name="fecha" value="{{ f_fecha }}">{% endif %}
                         {% if f_rango %}<input type="hidden" name="rango" value="{{ f_rango }}">{% endif %}
                         <label class="small text-muted m-0">Por página</label>
@@ -183,7 +195,10 @@
             <div id="panel-detalle" class="d-none">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h5 class="fw-bold m-0"><i class="bi bi-person-vcard text-primary"></i> Lead #<span id="d-id"></span></h5>
-                    <span id="d-estado-badge" class="badge bg-info-subtle text-info-emphasis"></span>
+                    <div class="d-flex gap-1">
+                        <span id="d-estado-badge" class="badge bg-info-subtle text-info-emphasis"></span>
+                        <span id="d-venta-badge" class="badge"></span>
+                    </div>
                 </div>
                 <a id="d-editar" href="#" class="btn btn-primary w-100 mb-3"><i class="bi bi-box-arrow-up-right"></i> Abrir detalle</a>
                 <dl class="row mb-2 small">
@@ -244,6 +259,12 @@
                 const d = await r.json();
                 document.getElementById('d-id').textContent = d.id;
                 document.getElementById('d-estado-badge').textContent = d.estado;
+                const vb = document.getElementById('d-venta-badge');
+                vb.textContent = d.estado_venta;
+                vb.className = 'badge ' + (
+                    d.estado_venta === 'VENDIDO' ? 'bg-success-subtle text-success-emphasis'
+                    : d.estado_venta === 'FINALIZADO' ? 'bg-info-subtle text-info-emphasis'
+                    : 'bg-secondary-subtle text-secondary-emphasis');
                 document.getElementById('d-nombre').textContent = d.nombre;
                 document.getElementById('d-documento').textContent = d.documento;
                 document.getElementById('d-telefono').textContent = d.telefono;

@@ -34,6 +34,7 @@ def listar_leads(request):
     # ---- Filtros ----
     q = request.GET.get('q', '').strip()
     estado = request.GET.get('estado', '').strip()
+    estado_venta = request.GET.get('estado_venta', '').strip()
     rango = request.GET.get('rango', '').strip()
     fecha = request.GET.get('fecha', '').strip()
 
@@ -50,6 +51,8 @@ def listar_leads(request):
         leads = leads.filter(filtro)
     if estado:
         leads = leads.filter(estado_lead=estado)
+    if estado_venta:
+        leads = leads.filter(estado_venta=estado_venta)
     if rango == 'hoy':
         leads = leads.filter(fecha_creacion=date.today())
     elif fecha:
@@ -65,6 +68,7 @@ def listar_leads(request):
     filtrado = _resumen(leads)
     hoy = base_rol.filter(fecha_creacion=date.today()).count()
     estados = list(base_rol.order_by().values_list('estado_lead', flat=True).distinct())
+    estados_venta = list(base_rol.order_by().values_list('estado_venta', flat=True).distinct())
 
     # ---- Paginacion con tamano ajustable (persistente en sesion) ----
     per_page_param = request.GET.get('per_page')
@@ -90,7 +94,9 @@ def listar_leads(request):
         'porestado_general': general['por_estado'],
         'porestado_filtrado': filtrado['por_estado'],
         'estados': estados,
-        'f_q': q, 'f_estado': estado, 'f_rango': rango, 'f_fecha': fecha,
+        'estados_venta': estados_venta,
+        'f_q': q, 'f_estado': estado, 'f_estado_venta': estado_venta,
+        'f_rango': rango, 'f_fecha': fecha,
     }
     return render(request, 'leads/listar_leads.html', contexto)
 
@@ -154,6 +160,7 @@ def detalle_lead(request, id_lead):
         'telefono': lead.telefono_marcado or '—',
         'telefonos_adicionales': telefonos_extra,
         'estado': lead.estado_lead,
+        'estado_venta': lead.estado_venta,
         'fecha': f"{lead.fecha_creacion} {lead.hora_creacion or ''}".strip(),
         'sede': sede,
         'asesor': asesor,
